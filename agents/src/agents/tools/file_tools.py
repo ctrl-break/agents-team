@@ -2,6 +2,27 @@ from crewai.tools import tool
 
 from agents.tools.path_utils import resolve_repo_path
 
+IGNORED_NAMES = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "venv",
+    "node_modules",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".idea",
+    ".vscode",
+    "site-packages",
+    "dist",
+    "build",
+}
+
+DEFAULT_MAX_LIST_ITEMS = 200
+
 
 def _ensure_allowed_path(path: str, allowed_roots: tuple[str, ...]) -> None:
     normalized = path.replace("\\", "/").lstrip("./")
@@ -25,6 +46,15 @@ def _write_text(relative_path: str, content: str, *, overwrite: bool) -> str:
 
     path.write_text(content, encoding="utf-8")
     return f"File written: {path}"
+
+
+def _should_skip_path(item, base_path) -> bool:
+    try:
+        parts = item.relative_to(base_path).parts
+    except ValueError:
+        return True
+
+    return any(part in IGNORED_NAMES for part in parts)
 
 
 @tool("Create directory")
@@ -99,12 +129,15 @@ def read_text_file(relative_path: str) -> str:
 
 
 @tool("List files")
-def list_files(relative_path: str = ".", recursive: bool = True) -> str:
+def list_files(
+    relative_path: str = ".", recursive: bool = True, max_items: int = DEFAULT_MAX_LIST_ITEMS
+) -> str:
     """
     List files and directories inside a repository path.
     Example input:
     - relative_path: 'apps'
     - recursive: True
+    - max_items: 100
     """
     path = resolve_repo_path(relative_path)
 
@@ -114,17 +147,26 @@ def list_files(relative_path: str = ".", recursive: bool = True) -> str:
     if path.is_file():
         return str(path)
 
+    if max_items <= 0:
+        return "Error: max_items must be greater than 0."
+
     if recursive:
-        items = sorted(path.rglob("*"))
+        items = [item for item in sorted(path.rglob("*")) if not _should_skip_path(item, path)]
     else:
-        items = sorted(path.iterdir())
+        items = [item for item in sorted(path.iterdir()) if not _should_skip_path(item, path)]
 
     if not items:
         return f"No files found in: {path}"
 
     result = []
-    for item in items:
+    for item in items[:max_items]:
         kind = "DIR " if item.is_dir() else "FILE"
         result.append(f"[{kind}] {item.relative_to(path)}")
+
+    if len(items) > max_items:
+        remaining = len(items) - max_items
+        result.append(
+            f"... truncated {remaining} more items. Narrow the path or increase max_items."
+        )
 
     return "\n".join(result)

@@ -15,6 +15,8 @@ pm_spec_task:
     - architecture concerns
     The output must be concise, implementation-oriented, and ready for approval.
     Use tools only to inspect repository structure or read existing files when helpful.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
     Do not call write tools to save the result.
     The system will save the draft plan automatically to docs/specs/pending-plan.md.
     Be concise. Limit output to 500-800 words.
@@ -33,6 +35,8 @@ backend_task:
     - testing considerations
     Use the approved specification file as the source of truth.
     Use tools only for inspection and reading existing files.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
     Do not call write tools to save the result.
     The system will save the final backend artifact automatically to
     docs/implementation/backend-plan.md.
@@ -54,6 +58,8 @@ frontend_task:
     - testing considerations
     Use the approved specification file and any backend output as context.
     Use tools only for inspection and reading existing files.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
     Do not call write tools to save the result.
     The system will save the final frontend artifact automatically to
     docs/implementation/frontend-plan.md.
@@ -73,6 +79,7 @@ qa_task:
     - regression risks
     - release blockers
     Use tools only to read the approved specification plus implementation artifacts.
+    Prefer reading specific artifact files instead of listing broad directories.
     Do not call write tools to save the result.
     The system will save QA notes automatically to docs/qa/qa-report.md.
   expected_output: >
@@ -90,6 +97,7 @@ architecture_task:
     - observability/logging concerns
     - final technical recommendations
     Use tools only to inspect the approved specification and implementation artifacts.
+    Prefer reading specific artifact files instead of listing broad directories.
     Do not call write tools to save the result.
     The system will save the review automatically to
     docs/architecture/architecture-review.md.
