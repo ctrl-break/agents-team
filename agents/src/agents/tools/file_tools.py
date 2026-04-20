@@ -1,7 +1,30 @@
-from pathlib import Path
 from crewai.tools import tool
 
 from agents.tools.path_utils import resolve_repo_path
+
+
+def _ensure_allowed_path(path: str, allowed_roots: tuple[str, ...]) -> None:
+    normalized = path.replace("\\", "/").lstrip("./")
+
+    if not any(
+        normalized == root or normalized.startswith(f"{root}/")
+        for root in allowed_roots
+    ):
+        allowed = ", ".join(allowed_roots)
+        raise ValueError(
+            f"Path '{path}' is outside allowed roots. Allowed roots: {allowed}"
+        )
+
+
+def _write_text(relative_path: str, content: str, *, overwrite: bool) -> str:
+    path = resolve_repo_path(relative_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists() and not overwrite:
+        return f"Error: file already exists: {path}"
+
+    path.write_text(content, encoding="utf-8")
+    return f"File written: {path}"
 
 
 @tool("Create directory")
@@ -24,10 +47,38 @@ def write_text_file(relative_path: str, content: str) -> str:
     - relative_path: 'docs/specs/expense-bot-plan.md'
     - content: '# Plan...'
     """
+    return _write_text(relative_path, content, overwrite=True)
+
+
+@tool("Write docs file")
+def write_docs_file(relative_path: str, content: str) -> str:
+    """
+    Write a text file only under the docs/ directory.
+    Existing files are preserved unless a task chooses a new file path.
+    """
+    _ensure_allowed_path(relative_path, ("docs",))
+    return _write_text(relative_path, content, overwrite=False)
+
+
+@tool("Write app file")
+def write_app_file(relative_path: str, content: str) -> str:
+    """
+    Write a text file only under the apps/ directory.
+    Existing files are preserved unless a task chooses a new file path.
+    """
+    _ensure_allowed_path(relative_path, ("apps",))
+    return _write_text(relative_path, content, overwrite=False)
+
+
+@tool("Create app directory")
+def create_app_directory(relative_path: str) -> str:
+    """
+    Create a directory only under the apps/ directory.
+    """
+    _ensure_allowed_path(relative_path, ("apps",))
     path = resolve_repo_path(relative_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-    return f"File written: {path}"
+    path.mkdir(parents=True, exist_ok=True)
+    return f"Directory created: {path}"
 
 
 @tool("Read text file")

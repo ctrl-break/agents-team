@@ -14,8 +14,9 @@ pm_spec_task:
     - QA scope
     - architecture concerns
     The output must be concise, implementation-oriented, and ready for approval.
-    Use tools when helpful to inspect repository structure and save the approved plan
-    to a file under docs/specs/.
+    Use tools when helpful to inspect repository structure and save the draft plan
+    to docs/specs/pending-plan.md.
+    Be concise. Limit output to 500-800 words.
   expected_output: >
     A complete technical specification in markdown, suitable for engineering work.
 
@@ -29,8 +30,9 @@ backend_task:
     - modules/services needed
     - validation and error handling
     - testing considerations
-    Use tools to create directories and write implementation artifacts if needed.
-    All files must be created inside the repository.
+    Use the approved specification file as the source of truth.
+    Save the final backend artifact to docs/implementation/backend-plan.md.
+    Create application files only under apps/ if implementation scaffolding is needed.
   expected_output: >
     A backend implementation plan in markdown with technical details.
 
@@ -45,6 +47,8 @@ frontend_task:
     - state management needs
     - edge cases
     - testing considerations
+    Use the approved specification file and any backend output as context.
+    Save the final frontend artifact to docs/implementation/frontend-plan.md.
   expected_output: >
     A frontend/client implementation plan in markdown.
 
@@ -58,7 +62,8 @@ qa_task:
     - negative scenarios
     - regression risks
     - release blockers
-    Use tools to read specifications and save QA notes under docs/qa/.
+    Use tools to read the approved specification plus implementation artifacts.
+    Save QA notes to docs/qa/qa-report.md.
   expected_output: >
     A structured QA test plan and validation report in markdown.
 
@@ -73,6 +78,7 @@ architecture_task:
     - deployment notes
     - observability/logging concerns
     - final technical recommendations
-    Use tools to inspect repository files and save architecture review notes under docs/architecture/.
+    Use tools to inspect the approved specification and implementation artifacts.
+    Save the review to docs/architecture/architecture-review.md.
   expected_output: >
     An architecture and DevOps review report in markdown.

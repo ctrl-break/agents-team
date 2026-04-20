@@ -16,4 +16,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.crewai]
-type = "flow"
+type = "crew"

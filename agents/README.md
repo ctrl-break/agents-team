@@ -1,56 +1,63 @@
-# {{crew_name}} Crew
+# Agents
 
-Welcome to the {{crew_name}} Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+CLI-orchestrated CrewAI project for turning a user request into approved
+specification artifacts and delivery documents.
+
+## What It Does
+
+The pipeline runs in two phases:
+
+1. Planning
+   Generates a draft specification and saves it to `docs/specs/pending-plan.md`.
+2. Delivery
+   After approval, promotes the plan to `docs/specs/latest-plan.md` and produces:
+   - `docs/implementation/backend-plan.md`
+   - `docs/implementation/frontend-plan.md`
+   - `docs/qa/qa-report.md`
+   - `docs/architecture/architecture-review.md`
+
+Backend and frontend agents may also scaffold implementation files under `apps/`.
 
 ## Installation
 
-Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
-
-First, if you haven't already, install uv:
+Use Python `>=3.10,<3.14`.
 
 ```bash
-pip install uv
+uv sync
 ```
 
-Next, navigate to your project directory and install the dependencies:
-
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/agents/config/agents.yaml` to define your agents
-- Modify `src/agents/config/tasks.yaml` to define your tasks
-- Modify `src/agents/crew.py` to add your own logic, tools and specific args
-- Modify `src/agents/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your flow and begin execution, run this from the root folder of your project:
+Set the required environment variables before running:
 
 ```bash
-crewai run
+OPENAI_API_KEY=...
+OPENAI_MODEL_NAME=openai/gpt-5.4-mini
 ```
 
-This command initializes the agents Flow as defined in your configuration.
+If you prefer a different provider, you can also set:
 
-This example, unmodified, will run a content creation flow on AI Agents and save the output to `output/post.md`.
+```bash
+LLM_PROVIDER=openai
+MODEL=gpt-5.4-mini
+```
 
-## Understanding Your Crew
+## Running
 
-The agents Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+From the `agents/` directory:
 
-## Support
+```bash
+uv run agent-team "Build a support ticket triage system"
+```
 
-For support, questions, or feedback regarding the {{crew_name}} Crew or crewAI.
+Interactive approval is enabled by default. For automated runs:
 
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+```bash
+uv run agent-team --auto-approve "Build a support ticket triage system"
+```
 
-Let's create wonders together with the power and simplicity of crewAI.
+If no request is passed as an argument, the CLI will prompt for multiline input.
+
+## Notes
+
+- Planning, QA, and architecture outputs are constrained to `docs/`.
+- Implementation scaffolding is constrained to `apps/`.
+- The approved specification is treated as the source of truth for downstream tasks.
