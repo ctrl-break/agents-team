@@ -1,50 +1,72 @@
-planning_task:
+pm_spec_task:
   description: >
-    Create a detailed outline for a blog post about {topic}.
-
-    The outline should include:
-    - A compelling title
-    - An introduction hook
-    - 3-5 main sections with key points to cover in each
-    - A conclusion with a call to action
-
-    Make the outline detailed enough that a writer can produce
-    a full blog post from it without additional research.
+    Analyze the incoming project request and transform it into a structured
+    technical specification. Include:
+    - product summary
+    - target users
+    - core features
+    - assumptions
+    - technical constraints
+    - user stories
+    - acceptance criteria
+    - backend scope
+    - frontend scope
+    - QA scope
+    - architecture concerns
+    The output must be concise, implementation-oriented, and ready for approval.
   expected_output: >
-    A structured blog post outline with a title, introduction notes,
-    detailed section breakdowns, and conclusion notes.
-  agent: planner
+    A complete technical specification in markdown, suitable for engineering work.
 
-writing_task:
+backend_task:
   description: >
-    Using the outline provided, write a full blog post about {topic}.
-
-    Requirements:
-    - Follow the outline structure closely
-    - Write in a clear, engaging, and conversational tone
-    - Each section should be 2-3 paragraphs
-    - Include a strong introduction and conclusion
-    - Target around 800-1200 words
+    Based on the approved specification, design and describe the backend/platform solution.
+    Include:
+    - backend responsibilities
+    - API or integration design
+    - data model ideas
+    - modules/services needed
+    - validation and error handling
+    - testing considerations
   expected_output: >
-    A complete blog post in markdown format, ready for editing.
-    The post should follow the outline and be well-written with
-    clear transitions between sections.
-  agent: writer
+    A backend implementation plan in markdown with technical details.
 
-editing_task:
+frontend_task:
   description: >
-    Review and edit the blog post about {topic}.
-
-    Focus on:
-    - Fixing any grammar or spelling errors
-    - Improving sentence clarity and flow
-    - Ensuring consistent tone throughout
-    - Strengthening the introduction and conclusion
-    - Removing any redundancy
-
-    Do not rewrite the post — refine and polish it.
+    Based on the approved specification, design and describe the frontend/client solution.
+    If no frontend/client is needed, explicitly state that and explain why.
+    Otherwise include:
+    - client responsibilities
+    - UI or interaction model
+    - API usage
+    - state management needs
+    - edge cases
+    - testing considerations
   expected_output: >
-    The final, polished blog post in markdown format without '```'.
-    Publication-ready with clean formatting and professional prose.
-  agent: editor
-  output_file: output/post.md
+    A frontend/client implementation plan in markdown.
+
+qa_task:
+  description: >
+    Based on the approved specification and implementation plans, produce a QA strategy.
+    Include:
+    - test scenarios
+    - happy paths
+    - edge cases
+    - negative scenarios
+    - regression risks
+    - release blockers
+  expected_output: >
+    A structured QA test plan and validation report in markdown.
+
+architecture_task:
+  description: >
+    Review the full proposed solution from architecture and DevOps perspectives.
+    Include:
+    - architecture quality
+    - scalability and maintainability concerns
+    - boundaries between components
+    - CI/CD needs
+    - deployment notes
+    - observability/logging concerns
+    - final technical recommendations
+  expected_output: >
+    An architecture and DevOps review report in markdown.

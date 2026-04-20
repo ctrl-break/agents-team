@@ -1,75 +1,130 @@
-from crewai import Agent, Crew, Process, Task
-from crewai.agents.agent_builder.base_agent import BaseAgent
-from crewai.project import CrewBase, agent, crew, task
+from pathlib import Path
+import yaml
 
-# If you want to run a snippet of code before or after the crew starts,
-# you can use the @before_kickoff and @after_kickoff decorators
-# https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
+from crewai import Agent, Task, Crew, Process
 
 
-@CrewBase
-class ContentCrew:
-    """Content Crew"""
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = BASE_DIR / "config"
 
-    agents: list[BaseAgent]
-    tasks: list[Task]
 
-    # Learn more about YAML configuration files here:
-    # Agents: https://docs.crewai.com/concepts/agents#yaml-configuration-recommended
-    # Tasks: https://docs.crewai.com/concepts/tasks#yaml-configuration-recommended
-    agents_config = "config/agents.yaml"
-    tasks_config = "config/tasks.yaml"
+def load_yaml(path: Path):
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
-    # If you would like to add tools to your crew, you can learn more about it here:
-    # https://docs.crewai.com/concepts/agents#agent-tools
-    @agent
-    def planner(self) -> Agent:
-        return Agent(
-            config=self.agents_config["planner"],  # type: ignore[index]
-        )
 
-    @agent
-    def writer(self) -> Agent:
-        return Agent(
-            config=self.agents_config["writer"],  # type: ignore[index]
-        )
+def load_configs():
+    agents_config = load_yaml(CONFIG_DIR / "agents.yaml")
+    tasks_config = load_yaml(CONFIG_DIR / "tasks.yaml")
+    return agents_config, tasks_config
 
-    @agent
-    def editor(self) -> Agent:
-        return Agent(
-            config=self.agents_config["editor"],  # type: ignore[index]
-        )
 
-    # To learn more about structured task outputs,
-    # task dependencies, and task callbacks, check out the documentation:
-    # https://docs.crewai.com/concepts/tasks#overview-of-a-task
-    @task
-    def planning_task(self) -> Task:
-        return Task(
-            config=self.tasks_config["planning_task"],  # type: ignore[index]
-        )
+def build_agents():
+    agents_config, _ = load_configs()
 
-    @task
-    def writing_task(self) -> Task:
-        return Task(
-            config=self.tasks_config["writing_task"],  # type: ignore[index]
-        )
+    product_manager = Agent(
+        config=agents_config["product_manager"],
+        verbose=True,
+    )
 
-    @task
-    def editing_task(self) -> Task:
-        return Task(
-            config=self.tasks_config["editing_task"],  # type: ignore[index]
-        )
+    backend_engineer = Agent(
+        config=agents_config["backend_engineer"],
+        verbose=True,
+    )
 
-    @crew
-    def crew(self) -> Crew:
-        """Creates the Content Crew"""
-        # To learn how to add knowledge sources to your crew, check out the documentation:
-        # https://docs.crewai.com/concepts/knowledge#what-is-knowledge
+    frontend_engineer = Agent(
+        config=agents_config["frontend_engineer"],
+        verbose=True,
+    )
 
-        return Crew(
-            agents=self.agents,  # Automatically created by the @agent decorator
-            tasks=self.tasks,  # Automatically created by the @task decorator
-            process=Process.sequential,
-            verbose=True,
-        )
+    qa_engineer = Agent(
+        config=agents_config["qa_engineer"],
+        verbose=True,
+    )
+
+    architect_devops = Agent(
+        config=agents_config["architect_devops"],
+        verbose=True,
+    )
+
+    return {
+        "product_manager": product_manager,
+        "backend_engineer": backend_engineer,
+        "frontend_engineer": frontend_engineer,
+        "qa_engineer": qa_engineer,
+        "architect_devops": architect_devops,
+    }
+
+
+def build_planning_crew(user_request: str) -> Crew:
+    agents, tasks_config = build_agents(), load_configs()[1]
+
+    pm_task = Task(
+        description=(
+            tasks_config["pm_spec_task"]["description"]
+            + f"\n\nProject request:\n{user_request}"
+        ),
+        expected_output=tasks_config["pm_spec_task"]["expected_output"],
+        agent=agents["product_manager"],
+    )
+
+    crew = Crew(
+        agents=[agents["product_manager"]],
+        tasks=[pm_task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+    return crew
+
+
+def build_delivery_crew(user_request: str, approved_plan: str) -> Crew:
+    agents, tasks_config = build_agents(), load_configs()[1]
+
+    common_context = (
+        f"\n\nOriginal project request:\n{user_request}"
+        f"\n\nApproved specification:\n{approved_plan}"
+    )
+
+    backend_task = Task(
+        description=tasks_config["backend_task"]["description"] + common_context,
+        expected_output=tasks_config["backend_task"]["expected_output"],
+        agent=agents["backend_engineer"],
+    )
+
+    frontend_task = Task(
+        description=tasks_config["frontend_task"]["description"] + common_context,
+        expected_output=tasks_config["frontend_task"]["expected_output"],
+        agent=agents["frontend_engineer"],
+    )
+
+    qa_task = Task(
+        description=tasks_config["qa_task"]["description"] + common_context,
+        expected_output=tasks_config["qa_task"]["expected_output"],
+        agent=agents["qa_engineer"],
+    )
+
+    architecture_task = Task(
+        description=tasks_config["architecture_task"]["description"] + common_context,
+        expected_output=tasks_config["architecture_task"]["expected_output"],
+        agent=agents["architect_devops"],
+    )
+
+    crew = Crew(
+        agents=[
+            agents["backend_engineer"],
+            agents["frontend_engineer"],
+            agents["qa_engineer"],
+            agents["architect_devops"],
+        ],
+        tasks=[
+            backend_task,
+            frontend_task,
+            qa_task,
+            architecture_task,
+        ],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+    return crew

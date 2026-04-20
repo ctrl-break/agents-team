@@ -9,10 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-kickoff = "agents.main:kickoff"
-run_crew = "agents.main:kickoff"
-plot = "agents.main:plot"
-run_with_trigger = "agents.main:run_with_trigger"
+agent-team = "agents.main:main"
 
 [build-system]
 requires = ["hatchling"]

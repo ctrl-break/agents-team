@@ -1,92 +1,87 @@
-#!/usr/bin/env python
+import argparse
+import sys
+
+from agents.content_crew import build_planning_crew, build_delivery_crew
 from pathlib import Path
 
-from pydantic import BaseModel
+def save_plan(plan_text: str):
+    path = Path(__file__).resolve().parents[3] / "docs" / "specs" / "latest-plan.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(plan_text, encoding="utf-8")
+    print(f"\nPlan saved to: {path}")
 
-from crewai.flow import Flow, listen, start
+def ask_for_approval() -> bool:
+    while True:
+        answer = input("\nApprove this plan? [y/n]: ").strip().lower()
 
-from agents.crews.content_crew.content_crew import ContentCrew
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
 
-
-class ContentState(BaseModel):
-    topic: str = ""
-    outline: str = ""
-    draft: str = ""
-    final_post: str = ""
-
-
-class ContentFlow(Flow[ContentState]):
-
-    @start()
-    def plan_content(self, crewai_trigger_payload: dict = None):
-        print("Planning content")
-
-        if crewai_trigger_payload:
-            self.state.topic = crewai_trigger_payload.get("topic", "AI Agents")
-            print(f"Using trigger payload: {crewai_trigger_payload}")
-        else:
-            self.state.topic = "AI Agents"
-
-        print(f"Topic: {self.state.topic}")
-
-    @listen(plan_content)
-    def generate_content(self):
-        print(f"Generating content on: {self.state.topic}")
-        result = (
-            ContentCrew()
-            .crew()
-            .kickoff(inputs={"topic": self.state.topic})
-        )
-
-        print("Content generated")
-        self.state.final_post = result.raw
-
-    @listen(generate_content)
-    def save_content(self):
-        print("Saving content")
-        output_dir = Path("output")
-        output_dir.mkdir(exist_ok=True)
-        with open(output_dir / "post.md", "w") as f:
-            f.write(self.state.final_post)
-        print("Post saved to output/post.md")
+        print("Please enter 'y' or 'n'.")
 
 
-def kickoff():
-    content_flow = ContentFlow()
-    content_flow.kickoff()
+def read_request_from_args() -> str:
+    parser = argparse.ArgumentParser(
+        description="Run agent team with approval before delivery."
+    )
+    parser.add_argument(
+        "request",
+        nargs="?",
+        help="Project request text. If omitted, interactive input mode is used.",
+    )
+
+    args = parser.parse_args()
+
+    if args.request:
+        return args.request.strip()
+
+    print("Enter your project request. Finish with an empty line:")
+    lines = []
+    while True:
+        line = input()
+        if not line.strip():
+            break
+        lines.append(line)
+
+    request = "\n".join(lines).strip()
+
+    if not request:
+        print("Error: empty request.")
+        sys.exit(1)
+
+    return request
 
 
-def plot():
-    content_flow = ContentFlow()
-    content_flow.plot()
+def main():
+    user_request = read_request_from_args()
 
+    print("\n=== PHASE 1: PLANNING ===\n")
+    planning_crew = build_planning_crew(user_request=user_request)
+    plan_result = planning_crew.kickoff()
+    plan_text = str(plan_result)
+    save_plan(plan_text)
 
-def run_with_trigger():
-    """
-    Run the flow with trigger payload.
-    """
-    import json
-    import sys
+    print("\n=== GENERATED PLAN ===\n")
+    print(plan_text)
 
-    # Get trigger payload from command line argument
-    if len(sys.argv) < 2:
-        raise Exception("No trigger payload provided. Please provide JSON payload as argument.")
+    approved = ask_for_approval()
 
-    try:
-        trigger_payload = json.loads(sys.argv[1])
-    except json.JSONDecodeError:
-        raise Exception("Invalid JSON payload provided as argument")
+    if not approved:
+        print("\nPlan was not approved. Stopping execution.")
+        return
 
-    # Create flow and kickoff with trigger payload
-    # The @start() methods will automatically receive crewai_trigger_payload parameter
-    content_flow = ContentFlow()
+    print("\n=== PHASE 2: DELIVERY ===\n")
+    delivery_crew = build_delivery_crew(
+        user_request=user_request,
+        approved_plan=plan_text,
+    )
+    delivery_result = delivery_crew.kickoff()
 
-    try:
-        result = content_flow.kickoff({"crewai_trigger_payload": trigger_payload})
-        return result
-    except Exception as e:
-        raise Exception(f"An error occurred while running the flow with trigger: {e}")
+    print("\n=== FINAL RESULT ===\n")
+    print(delivery_result)
 
 
 if __name__ == "__main__":
-    kickoff()
+    main()
