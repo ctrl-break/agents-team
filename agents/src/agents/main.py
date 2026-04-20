@@ -1,8 +1,7 @@
+from pathlib import Path
 import argparse
 import sys
-from typing import Tuple
-
-from pathlib import Path
+from typing import Optional, Tuple
 
 from agents.artifacts import build_artifact_paths
 from agents.crews.content_crew.content_crew import build_delivery_crew, build_planning_crew
@@ -25,6 +24,24 @@ def promote_pending_plan(plan_text: str) -> None:
     print(f"\nApproved plan saved to: {ARTIFACTS.approved_spec}")
 
 
+def load_approved_plan(path: Path) -> str:
+    if not path.exists():
+        print(f"Error: approved plan not found: {path}")
+        sys.exit(1)
+
+    if not path.is_file():
+        print(f"Error: approved plan path is not a file: {path}")
+        sys.exit(1)
+
+    plan_text = path.read_text(encoding="utf-8").strip()
+
+    if not plan_text:
+        print(f"Error: approved plan is empty: {path}")
+        sys.exit(1)
+
+    return plan_text
+
+
 def ask_for_approval(auto_approve: bool) -> bool:
     if auto_approve:
         return True
@@ -40,7 +57,7 @@ def ask_for_approval(auto_approve: bool) -> bool:
         print("Please enter 'y' or 'n'.")
 
 
-def read_request_from_args() -> Tuple[str, bool]:
+def read_request_from_args() -> Tuple[Optional[str], bool, bool, Path]:
     parser = argparse.ArgumentParser(
         description="Run agent team with approval before delivery."
     )
@@ -54,11 +71,27 @@ def read_request_from_args() -> Tuple[str, bool]:
         action="store_true",
         help="Skip interactive approval and continue directly to delivery.",
     )
+    parser.add_argument(
+        "--delivery-only",
+        action="store_true",
+        help="Skip planning and run delivery using an existing approved plan.",
+    )
+    parser.add_argument(
+        "--plan-file",
+        default=str(ARTIFACTS.approved_spec),
+        help="Path to an approved plan file used with --delivery-only.",
+    )
 
     args = parser.parse_args()
 
+    if args.delivery_only:
+        request = (args.request or "").strip() or None
+        return request, args.auto_approve, args.delivery_only, Path(args.plan_file)
+
     if args.request:
-        return args.request.strip(), args.auto_approve
+        return args.request.strip(), args.auto_approve, args.delivery_only, Path(
+            args.plan_file
+        )
 
     print("Enter your project request. Finish with an empty line:")
     lines = []
@@ -74,11 +107,26 @@ def read_request_from_args() -> Tuple[str, bool]:
         print("Error: empty request.")
         sys.exit(1)
 
-    return request, args.auto_approve
+    return request, args.auto_approve, args.delivery_only, Path(args.plan_file)
 
 
 def main():
-    user_request, auto_approve = read_request_from_args()
+    user_request, auto_approve, delivery_only, plan_file = read_request_from_args()
+
+    if delivery_only:
+        plan_text = load_approved_plan(plan_file)
+
+        print("\n=== PHASE 2: DELIVERY ===\n")
+        delivery_crew = build_delivery_crew(
+            user_request=user_request,
+            approved_plan=plan_text,
+        )
+        delivery_result = delivery_crew.kickoff()
+        delivery_text = getattr(delivery_result, "raw", str(delivery_result))
+
+        print("\n=== FINAL RESULT ===\n")
+        print(delivery_text)
+        return
 
     print("\n=== PHASE 1: PLANNING ===\n")
     planning_crew = build_planning_crew(user_request=user_request)

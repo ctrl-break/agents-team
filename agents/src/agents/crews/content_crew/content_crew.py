@@ -7,11 +7,8 @@ from crewai import Agent, Task, Crew, Process, LLM
 
 from agents.artifacts import build_artifact_paths
 from agents.tools.file_tools import (
-    create_app_directory,
     list_files,
     read_text_file,
-    write_app_file,
-    write_docs_file,
 )
 
 
@@ -38,35 +35,35 @@ def build_agents() -> dict[str, Agent]:
     product_manager = Agent(
         config=agents_config["product_manager"],
         llm=llm,
-        tools=[write_docs_file, read_text_file, list_files],
+        tools=[read_text_file, list_files],
         verbose=True,
     )
 
     backend_engineer = Agent(
         config=agents_config["backend_engineer"],
         llm=llm,
-        tools=[create_app_directory, write_app_file, read_text_file, list_files],
+        tools=[read_text_file, list_files],
         verbose=True,
     )
 
     frontend_engineer = Agent(
         config=agents_config["frontend_engineer"],
         llm=llm,
-        tools=[create_app_directory, write_app_file, read_text_file, list_files],
+        tools=[read_text_file, list_files],
         verbose=True,
     )
 
     qa_engineer = Agent(
         config=agents_config["qa_engineer"],
         llm=llm,
-        tools=[read_text_file, list_files, write_docs_file],
+        tools=[read_text_file, list_files],
         verbose=True,
     )
 
     architect_devops = Agent(
         config=agents_config["architect_devops"],
         llm=llm,
-        tools=[read_text_file, list_files, write_docs_file],
+        tools=[read_text_file, list_files],
         verbose=True,
     )
 
@@ -105,15 +102,19 @@ def build_planning_crew(user_request: str) -> Crew:
     return crew
 
 
-def build_delivery_crew(user_request: str, approved_plan: str) -> Crew:
+def build_delivery_crew(user_request: str | None, approved_plan: str) -> Crew:
     agents = build_agents()
     _, tasks_config = load_configs()
 
     common_context = (
-        f"\n\nOriginal project request:\n{user_request}"
         f"\n\nApproved specification location:\n{ARTIFACTS.approved_spec.as_posix()}"
         f"\n\nApproved specification content:\n{approved_plan}"
     )
+
+    if user_request:
+        common_context = (
+            f"\n\nOriginal project request:\n{user_request}" + common_context
+        )
 
     backend_task = Task(
         description=tasks_config["backend_task"]["description"] + common_context,

@@ -14,8 +14,9 @@ pm_spec_task:
     - QA scope
     - architecture concerns
     The output must be concise, implementation-oriented, and ready for approval.
-    Use tools when helpful to inspect repository structure and save the draft plan
-    to docs/specs/pending-plan.md.
+    Use tools only to inspect repository structure or read existing files when helpful.
+    Do not call write tools to save the result.
+    The system will save the draft plan automatically to docs/specs/pending-plan.md.
     Be concise. Limit output to 500-800 words.
   expected_output: >
     A complete technical specification in markdown, suitable for engineering work.
@@ -31,8 +32,12 @@ backend_task:
     - validation and error handling
     - testing considerations
     Use the approved specification file as the source of truth.
-    Save the final backend artifact to docs/implementation/backend-plan.md.
-    Create application files only under apps/ if implementation scaffolding is needed.
+    Use tools only for inspection and reading existing files.
+    Do not call write tools to save the result.
+    The system will save the final backend artifact automatically to
+    docs/implementation/backend-plan.md.
+    Do not create source files under apps/ during this phase.
+    Produce implementation-ready documentation only.
   expected_output: >
     A backend implementation plan in markdown with technical details.
 
@@ -48,7 +53,12 @@ frontend_task:
     - edge cases
     - testing considerations
     Use the approved specification file and any backend output as context.
-    Save the final frontend artifact to docs/implementation/frontend-plan.md.
+    Use tools only for inspection and reading existing files.
+    Do not call write tools to save the result.
+    The system will save the final frontend artifact automatically to
+    docs/implementation/frontend-plan.md.
+    Do not create source files under apps/ during this phase.
+    Produce implementation-ready documentation only.
   expected_output: >
     A frontend/client implementation plan in markdown.
 
@@ -62,8 +72,9 @@ qa_task:
     - negative scenarios
     - regression risks
     - release blockers
-    Use tools to read the approved specification plus implementation artifacts.
-    Save QA notes to docs/qa/qa-report.md.
+    Use tools only to read the approved specification plus implementation artifacts.
+    Do not call write tools to save the result.
+    The system will save QA notes automatically to docs/qa/qa-report.md.
   expected_output: >
     A structured QA test plan and validation report in markdown.
 
@@ -78,7 +89,9 @@ architecture_task:
     - deployment notes
     - observability/logging concerns
     - final technical recommendations
-    Use tools to inspect the approved specification and implementation artifacts.
-    Save the review to docs/architecture/architecture-review.md.
+    Use tools only to inspect the approved specification and implementation artifacts.
+    Do not call write tools to save the result.
+    The system will save the review automatically to
+    docs/architecture/architecture-review.md.
   expected_output: >
     An architecture and DevOps review report in markdown.
