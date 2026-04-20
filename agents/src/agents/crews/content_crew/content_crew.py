@@ -1,4 +1,5 @@
 from pathlib import Path
+from agents.tools.file_tools import create_directory, list_files, read_text_file, write_text_file
 import yaml
 
 from crewai import Agent, Task, Crew, Process
@@ -24,26 +25,31 @@ def build_agents():
 
     product_manager = Agent(
         config=agents_config["product_manager"],
+        tools=[write_text_file, read_text_file, list_files],
         verbose=True,
     )
 
     backend_engineer = Agent(
         config=agents_config["backend_engineer"],
+        tools=[create_directory, write_text_file, read_text_file, list_files],
         verbose=True,
     )
 
     frontend_engineer = Agent(
         config=agents_config["frontend_engineer"],
+        tools=[create_directory, write_text_file, read_text_file, list_files],
         verbose=True,
     )
 
     qa_engineer = Agent(
         config=agents_config["qa_engineer"],
+        tools=[read_text_file, list_files, write_text_file],
         verbose=True,
     )
 
     architect_devops = Agent(
         config=agents_config["architect_devops"],
+        tools=[read_text_file, list_files, write_text_file],
         verbose=True,
     )
 

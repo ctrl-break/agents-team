@@ -1,8 +1,9 @@
 import argparse
 import sys
 
-from agents.content_crew import build_planning_crew, build_delivery_crew
 from pathlib import Path
+
+from agents.crews.content_crew.content_crew import build_delivery_crew, build_planning_crew
 
 def save_plan(plan_text: str):
     path = Path(__file__).resolve().parents[3] / "docs" / "specs" / "latest-plan.md"

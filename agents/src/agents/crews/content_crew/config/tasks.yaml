@@ -14,6 +14,8 @@ pm_spec_task:
     - QA scope
     - architecture concerns
     The output must be concise, implementation-oriented, and ready for approval.
+    Use tools when helpful to inspect repository structure and save the approved plan
+    to a file under docs/specs/.
   expected_output: >
     A complete technical specification in markdown, suitable for engineering work.
 
@@ -27,6 +29,8 @@ backend_task:
     - modules/services needed
     - validation and error handling
     - testing considerations
+    Use tools to create directories and write implementation artifacts if needed.
+    All files must be created inside the repository.
   expected_output: >
     A backend implementation plan in markdown with technical details.
 
@@ -54,6 +58,7 @@ qa_task:
     - negative scenarios
     - regression risks
     - release blockers
+    Use tools to read specifications and save QA notes under docs/qa/.
   expected_output: >
     A structured QA test plan and validation report in markdown.
 
@@ -68,5 +73,6 @@ architecture_task:
     - deployment notes
     - observability/logging concerns
     - final technical recommendations
+    Use tools to inspect repository files and save architecture review notes under docs/architecture/.
   expected_output: >
     An architecture and DevOps review report in markdown.
