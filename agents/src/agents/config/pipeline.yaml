@@ -1,0 +1,109 @@
+# ── Pipeline Configuration ─────────────────────────────────────────────────
+# Все "магические числа" и пороги вынесены в этот файл.
+# Переопределяет значения по умолчанию из quality.py (DEFAULT_THRESHOLDS).
+
+pipeline:
+  name: "SpecPipeline"
+  description: "Iterative review pipeline for generating project specs"
+
+# ── Phase Toggles ──────────────────────────────────────────────────────────
+phases:
+  analysis:
+    enabled: true
+  planning:
+    enabled: true
+    iterations: 3                    # max planning-review cycles
+    review_score_threshold: 7.0      # 0-10, ниже → повтор
+  human_approval:
+    enabled: true
+    max_rounds: 3                    # сколько раз человек может отправить на доработку
+  implementation:
+    enabled: true
+    parallel: true                   # backend и frontend параллельно
+    backend_iterations: 2            # max backend review cycles
+    frontend_iterations: 2           # max frontend review cycles
+    review_score_threshold: 7.0
+  cross_review:
+    enabled: true
+    max_iterations: 2                # max cross-review correction cycles
+  qa_architecture:
+    enabled: true
+  validation:
+    enabled: true
+    checks:                          # список включённых автоматических проверок
+      - broken_links                 # все markdown-ссылки живы
+      - section_completeness         # все обязательные секции заполнены
+      - api_consistency              # API-контракты Backend ↔ Frontend совпадают
+      - acceptance_coverage          # acceptance criteria покрыты QA-тестами
+      - file_formatting              # markdown форматирование корректно
+    quality_threshold_pct: 85.0      # минимальный % для прохождения
+    qa_min_coverage_pct: 80.0        # минимальное покрытие QA
+
+# ── LLM Configuration ───────────────────────────────────────────────────────
+llm:
+  model: "gpt-4o"                    # override via OPENAI_MODEL env var
+  max_completion_tokens: 4000        # увеличено с 2000 для сложных спецификаций
+  temperature: 0.3
+  verbose: false                     # override via --verbose CLI flag
+
+# ── Output ──────────────────────────────────────────────────────────────────
+output:
+  base_dir: "../../../docs"          # относительно agents/src/agents/
+  version_artifacts: true            # сохранять итерации с номерами версий
+  generate_summary: true             # генерировать delivery-summary.md
+  timestamp_artifacts: false         # добавлять timestamp в имена файлов
+
+# ── Error Handling ──────────────────────────────────────────────────────────
+errors:
+  max_before_abort: 5                # макс. ошибок до аварийной остановки
+  retry_on_network: true             # retry при сетевых ошибках OpenAI
+  retry_max_attempts: 3
+  retry_backoff_seconds: 5
+
+# ── Scoring Criteria (используются Review Crew) ─────────────────────────────
+scoring:
+  plan_review:
+    criteria:
+      - key: completeness
+        label: Completeness
+        description: "All required sections are present and fully addressed"
+        weight: 1.0
+      - key: clarity
+        label: Clarity
+        description: "Requirements are unambiguous and well-structured"
+        weight: 1.0
+      - key: edge_cases
+        label: Edge Cases
+        description: "Error states, boundary conditions, and edge cases are covered"
+        weight: 0.8
+      - key: feasibility
+        label: Feasibility
+        description: "The spec is realistically implementable with described resources"
+        weight: 0.7
+      - key: consistency
+        label: Consistency
+        description: "No internal contradictions between sections"
+        weight: 1.0
+
+  implementation_review:
+    criteria:
+      - key: spec_alignment
+        label: Spec Alignment
+        description: "Every requirement from the approved spec is addressed"
+        weight: 1.5
+      - key: technical_depth
+        label: Technical Depth
+        description: "Technology choices, architecture decisions, and rationale are detailed"
+        weight: 1.0
+      - key: api_contract
+        label: API Contract
+        description: "API endpoints are fully specified (method, path, request/response schemas)"
+        weight: 1.2
+      - key: security
+        label: Security & Auth
+        description: "Authentication, authorization, and security considerations are addressed"
+        weight: 0.8
+      - key: error_handling
+        label: Error Handling
+        description: "Error scenarios and fallback strategies are described"
+        weight: 0.5
