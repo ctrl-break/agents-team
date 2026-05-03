@@ -50,6 +50,7 @@ from agents.state import (
     Phase,
     PipelineState,
     QualitySummary,
+    ReviewDecision,
 )
 
 ARTIFACTS = build_artifact_paths()
@@ -166,15 +167,21 @@ def _phase_planning(
         validation_report = validate_planning_artifacts()
 
         # Parse a simple score from validation (if no LLM score parsing)
-        # For now use validation score_pct / 10 as proxy; in production parse LLM output
-        plan_score = validation_report.score_pct / 10.0
+        # For now use validation passed_pct / 10 as proxy; in production parse LLM output
+        plan_score = validation_report.passed_pct / 10.0
 
         # Build iteration result
         iter_result = IterationResult(
             iteration=iteration,
+            output=plan_text[:200],
             score=plan_score,
             issues=[c.details for c in validation_report.checks if not c.passed],
-            artifact_path=str(ARTIFACTS.pending_spec),
+            suggestions=[],
+            decision=(
+                ReviewDecision.APPROVED
+                if plan_score >= thresholds.plan_review_score_threshold
+                else ReviewDecision.REVISIONS_NEEDED
+            ),
         )
         state.plan_iterations.append(iter_result)
         print(f"  Score: {iter_result.score:.1f}/10 ({len(iter_result.issues)} issues)")
@@ -192,7 +199,7 @@ def _phase_planning(
     # Validation check
     validation_report = validate_planning_artifacts()
     state.validation = validation_report
-    print(f"  Auto-validation: {validation_report.score_pct}% "
+    print(f"  Auto-validation: {validation_report.passed_pct}% "
           f"({validation_report.passed}/{validation_report.total})")
 
     return state
@@ -296,9 +303,10 @@ def _phase_implementation(
     # Estimate cross-review issues (count "BLOCKED" or "MISALIGNED" in output)
     cross_issues = cross_text.count("MISALIGNED") + cross_text.count("BLOCKED")
     state.cross_review = CrossReviewResult(
-        score=7.0,  # placeholder — would parse from LLM output
-        issues_count=cross_issues,
-        summary=cross_text[:500],
+        conflicts=[],
+        resolved=(cross_issues == 0),
+        backend_review_of_frontend=cross_text[:500] if ARTIFACTS.frontend_plan.exists() else "",
+        frontend_review_of_backend=cross_text[:500] if ARTIFACTS.backend_plan.exists() else "",
     )
 
     print(f"  Backend plan: {'✅' if state.backend_plan else '❌'}")
@@ -343,7 +351,7 @@ def _phase_validation(
     state.validation = delivery_report
 
     print(f"  Validation: {delivery_report.passed}/{delivery_report.total} passed "
-          f"({delivery_report.score_pct}%)")
+          f"({delivery_report.passed_pct}%)")
 
     # Count broken links
     broken_links = sum(
@@ -361,13 +369,16 @@ def _phase_validation(
     # QA coverage estimate (simplified)
     qa_coverage = 100.0 if ARTIFACTS.qa_report.exists() else 0.0
 
+    # Cross-review issues count
+    cross_review_issues = len(state.cross_review.conflicts) if state.cross_review else 0
+
     # Overall quality
-    review_score = state.latest_plan_score or (delivery_report.score_pct / 10.0)
+    review_score = state.latest_plan_score or (delivery_report.passed_pct / 10.0)
     overall_score = compute_overall_quality(
         review_score=review_score,
-        validation_pct=delivery_report.score_pct,
+        validation_pct=delivery_report.passed_pct,
         qa_coverage_pct=qa_coverage,
-        cross_review_issues=state.cross_review.issues_count,
+        cross_review_issues=cross_review_issues,
     )
 
     passed = is_pipeline_successful(overall_score, thresholds)
@@ -375,7 +386,7 @@ def _phase_validation(
     state.quality = QualitySummary(
         plan_iterations=len(state.plan_iterations),
         final_review_score=round(review_score, 1),
-        cross_review_issues=state.cross_review.issues_count,
+        cross_review_issues=cross_review_issues,
         qa_coverage_pct=qa_coverage,
         broken_links=broken_links,
         sections_complete=sections_complete,

@@ -97,9 +97,38 @@ class ValidationReport(BaseModel):
     failed: int = Field(default=0)
     score_pct: float = Field(default=0.0)
 
+    @classmethod
+    def from_checks(cls, checks: list[ValidationCheck]) -> "ValidationReport":
+        """Create a ValidationReport from a list of checks, computing aggregate stats."""
+        total = len(checks)
+        passed_count = sum(1 for c in checks if c.passed)
+        failed_count = total - passed_count
+        score = 100.0 if total == 0 else round((passed_count / total) * 100.0, 1)
+        return cls(
+            checks=checks,
+            total=total,
+            passed=passed_count,
+            failed=failed_count,
+            score_pct=score,
+        )
+
     @property
     def is_clean(self) -> bool:
         return self.failed == 0
+
+    @property
+    def all_passed(self) -> bool:
+        """True if there are no failed checks."""
+        return self.failed == 0
+
+    @property
+    def passed_pct(self) -> float:
+        """Percentage of checks that passed."""
+        return self.score_pct
+
+    def failing_names(self) -> list[str]:
+        """Return names of all failing checks."""
+        return [c.name for c in self.checks if not c.passed]
 
 
 class QualitySummary(BaseModel):

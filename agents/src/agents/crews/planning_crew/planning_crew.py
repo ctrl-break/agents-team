@@ -37,17 +37,34 @@ def _build_pm_agent() -> Agent:
     )
 
 
-def build_planning_crew(user_request: str) -> Crew:
-    """Return a Crew that generates a draft specification for the given request."""
+def build_planning_crew(user_request: str, feedback: str = "") -> Crew:
+    """Return a Crew that generates a draft specification for the given request.
+
+    Args:
+        user_request: The original project request text.
+        feedback: Optional human feedback from a rejected plan iteration.
+                  When provided, the agent will incorporate this feedback
+                  into the regenerated specification.
+    """
     agent = _build_pm_agent()
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks.yaml")
 
+    description = tasks_cfg["pm_spec_task"]["description"]
+    description += f"\n\nProject request:\n{user_request}"
+
+    if feedback.strip():
+        description += (
+            f"\n\n⚠️ IMPORTANT: The previous plan was rejected with the following feedback."
+            f"\nPlease address ALL of these concerns in the revised specification:\n\n"
+            f"{feedback}"
+        )
+
+    description += (
+        f"\n\nSave the draft specification to: {ARTIFACTS.pending_spec.as_posix()}"
+    )
+
     task = Task(
-        description=(
-            tasks_cfg["pm_spec_task"]["description"]
-            + f"\n\nProject request:\n{user_request}"
-            + f"\n\nSave the draft specification to: {ARTIFACTS.pending_spec.as_posix()}"
-        ),
+        description=description,
         expected_output=tasks_cfg["pm_spec_task"]["expected_output"],
         agent=agent,
         output_file=str(ARTIFACTS.pending_spec),
