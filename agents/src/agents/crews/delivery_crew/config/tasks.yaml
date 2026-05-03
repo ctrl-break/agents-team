@@ -1,0 +1,80 @@
+backend_task:
+  description: >
+    Based on the approved specification, design and describe the backend/platform solution.
+    Include:
+    - backend responsibilities
+    - API or integration design
+    - data model ideas
+    - modules/services needed
+    - validation and error handling
+    - testing considerations
+    Use the approved specification file as the source of truth.
+    Use tools only for inspection and reading existing files.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
+    Do not call write tools to save the result.
+    The system will save the final backend artifact automatically to
+    docs/implementation/backend-plan.md.
+    Do not create source files under apps/ during this phase.
+    Produce implementation-ready documentation only.
+  expected_output: >
+    A backend implementation plan in markdown with technical details.
+
+frontend_task:
+  description: >
+    Based on the approved specification, design and describe the frontend/client solution.
+    If no frontend/client is needed, explicitly state that and explain why.
+    Otherwise include:
+    - client responsibilities
+    - UI or interaction model
+    - API usage
+    - state management needs
+    - edge cases
+    - testing considerations
+    Use the approved specification file and any backend output as context.
+    Use tools only for inspection and reading existing files.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
+    Do not call write tools to save the result.
+    The system will save the final frontend artifact automatically to
+    docs/implementation/frontend-plan.md.
+    Do not create source files under apps/ during this phase.
+    Produce implementation-ready documentation only.
+  expected_output: >
+    A frontend/client implementation plan in markdown.
+
+qa_task:
+  description: >
+    Based on the approved specification and implementation plans, produce a QA strategy.
+    Include:
+    - test scenarios
+    - happy paths
+    - edge cases
+    - negative scenarios
+    - regression risks
+    - release blockers
+    Use tools only to read the approved specification plus implementation artifacts.
+    Prefer reading specific artifact files instead of listing broad directories.
+    Do not call write tools to save the result.
+    The system will save QA notes automatically to docs/qa/qa-report.md.
+  expected_output: >
+    A structured QA test plan and validation report in markdown.
+
+architecture_task:
+  description: >
+    Review the full proposed solution from architecture and DevOps perspectives.
+    Include:
+    - architecture quality
+    - scalability and maintainability concerns
+    - boundaries between components
+    - CI/CD needs
+    - deployment notes
+    - observability/logging concerns
+    - final technical recommendations
+    Use tools only to inspect the approved specification and implementation artifacts.
+    Prefer reading specific artifact files instead of listing broad directories.
+    Do not call write tools to save the result.
+    The system will save the review automatically to
+    docs/architecture/architecture-review.md.
+  expected_output: >
+    An architecture and DevOps review report in markdown.

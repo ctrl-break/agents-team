@@ -1,0 +1,24 @@
+pm_spec_task:
+  description: >
+    Analyze the incoming project request and transform it into a structured
+    technical specification. Include:
+    - product summary
+    - target users
+    - core features
+    - assumptions
+    - technical constraints
+    - user stories
+    - acceptance criteria
+    - backend scope
+    - frontend scope
+    - QA scope
+    - architecture concerns
+    The output must be concise, implementation-oriented, and ready for approval.
+    Use tools only to inspect repository structure or read existing files when helpful.
+    Prefer narrow paths such as docs/, apps/, or agents/src/.
+    Do not list the whole repository recursively unless absolutely necessary.
+    Do not call write tools to save the result.
+    The system will save the draft plan automatically to docs/specs/pending-plan.md.
+    Be concise. Limit output to 500-800 words.
+  expected_output: >
+    A complete technical specification in markdown, suitable for engineering work.

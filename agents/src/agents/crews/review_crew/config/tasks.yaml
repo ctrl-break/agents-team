@@ -1,0 +1,80 @@
+tech_review_task:
+  description: >
+    You receive one or more plan/implementation artifacts. For EACH artifact,
+    produce a structured review with numeric scores (1–10, 10 = best)
+    and concrete issues/improvements.
+
+    Scoring dimensions (score each dimension 1–10):
+    - clarity: Is the artifact clear, unambiguous, well-structured?
+    - completeness: Are all required sections present and detailed enough?
+    - technical_depth: Are technical choices justified with enough detail?
+    - actionability: Can a developer start implementing from this artifact?
+    - consistency: Does the artifact align with the specification?
+
+    For each dimension, provide:
+    - score (integer 1–10)
+    - brief justification (1–3 sentences)
+    - if score < 6, list concrete improvements needed
+
+    Output format for each artifact:
+    ```
+    ## Artifact: {path}
+
+    | Dimension       | Score | Notes                          |
+    |-----------------|-------|---------------------------------|
+    | clarity         | X     | justification                   |
+    | ...
+    ```
+
+    Then a "Summary" section with:
+    - average score across all dimensions
+    - overall verdict (APPROVE / REVISE / REJECT)
+    - key risks (if any)
+
+    Quality thresholds for reference:
+    - minimum average score per dimension: 6.0
+    - overall pass requires every artifact average ≥ 6.0
+    - any dimension scored ≤ 3 is an automatic REJECT
+
+    Use tools only to read artifacts. Prefer reading specific artifact files
+    instead of listing broad directories.
+    Do not call write tools. The system saves your review automatically
+    to docs/reviews/tech-review.md.
+  expected_output: >
+    Structured review in markdown with numeric scoring tables and actionable feedback.
+
+cross_review_task:
+  description: >
+    After the technical reviewer has scored individual artifacts, perform a
+    cross-artifact consistency check. Compare:
+    - backend plan vs frontend plan (API contracts, data shapes, assumptions)
+    - QA report vs backend+frontend (missing test scenarios)
+    - architecture review vs all deliverables (unresolved concerns)
+
+    Score each artifact PAIR on consistency (1–10):
+    - backend↔frontend
+    - qa↔backend
+    - qa↔frontend
+    - architecture↔backend
+    - architecture↔frontend
+
+    For each pair:
+    - score (integer 1–10)
+    - list contradictions or gaps found
+    - if score < 6, list required alignments
+
+    Output format same table style as technical reviewer.
+
+    Overall summary:
+    - cross-review average
+    - list of blocking inconsistencies
+    - verdict: CONSISTENT / MISALIGNED / BLOCKED
+
+    Minimum cross-review average: 6.0.
+    Any pair scored ≤ 4 is an automatic BLOCKED.
+
+    Use tools only to read artifacts.
+    Do not call write tools. The system saves your cross-review automatically
+    to docs/reviews/cross-review.md.
+  expected_output: >
+    Cross-artifact consistency report with numeric pair scoring and conflict resolution notes.
