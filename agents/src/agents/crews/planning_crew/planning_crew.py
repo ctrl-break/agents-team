@@ -11,6 +11,11 @@ from crewai import Agent, Task, Crew, Process
 from agents.artifacts import build_artifact_paths
 from agents.llm_factory import build_llm
 from agents.tools.file_tools import list_files, read_text_file
+from agents.tools.common_tools import (
+    check_markdown_links,
+    extract_headings,
+    search_code,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -27,7 +32,7 @@ def _build_pm_agent() -> Agent:
     return Agent(
         config=agents_cfg["product_manager"],
         llm=build_llm(),
-        tools=[read_text_file, list_files],
+        tools=[read_text_file, list_files, search_code, check_markdown_links, extract_headings],
         verbose=True,
     )
 

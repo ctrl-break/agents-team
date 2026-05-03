@@ -11,6 +11,14 @@ from crewai import Agent, Task, Crew, Process
 from agents.artifacts import build_artifact_paths
 from agents.llm_factory import build_llm
 from agents.tools.file_tools import list_files, read_text_file
+from agents.tools.common_tools import (
+    check_markdown_links,
+    count_lines,
+    extract_headings,
+    search_code,
+    validate_json,
+    validate_yaml,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = BASE_DIR / "config"
@@ -25,13 +33,35 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 def _build_agents() -> dict[str, Agent]:
     agents_cfg = _load_yaml(CONFIG_DIR / "agents.yaml")
     llm = build_llm()
-    tools = [read_text_file, list_files]
+
+    common_tools = [read_text_file, list_files, search_code]
 
     return {
-        "backend_engineer": Agent(config=agents_cfg["backend_engineer"], llm=llm, tools=tools, verbose=True),
-        "frontend_engineer": Agent(config=agents_cfg["frontend_engineer"], llm=llm, tools=tools, verbose=True),
-        "qa_engineer": Agent(config=agents_cfg["qa_engineer"], llm=llm, tools=tools, verbose=True),
-        "architect_devops": Agent(config=agents_cfg["architect_devops"], llm=llm, tools=tools, verbose=True),
+        "backend_engineer": Agent(
+            config=agents_cfg["backend_engineer"],
+            llm=llm,
+            tools=common_tools + [validate_yaml, validate_json, extract_headings],
+            verbose=True,
+        ),
+        "frontend_engineer": Agent(
+            config=agents_cfg["frontend_engineer"],
+            llm=llm,
+            tools=common_tools + [validate_json, extract_headings],
+            verbose=True,
+        ),
+        "qa_engineer": Agent(
+            config=agents_cfg["qa_engineer"],
+            llm=llm,
+            tools=common_tools + [check_markdown_links, count_lines, extract_headings],
+            verbose=True,
+        ),
+        "architect_devops": Agent(
+            config=agents_cfg["architect_devops"],
+            llm=llm,
+            tools=common_tools
+            + [validate_yaml, validate_json, check_markdown_links, count_lines, extract_headings],
+            verbose=True,
+        ),
     }
 
 

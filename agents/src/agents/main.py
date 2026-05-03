@@ -4,7 +4,8 @@ import sys
 from typing import Optional, Tuple
 
 from agents.artifacts import build_artifact_paths
-from agents.crews.content_crew.content_crew import build_delivery_crew, build_planning_crew
+from agents.crews.planning_crew.planning_crew import build_planning_crew
+from agents.crews.delivery_crew.delivery_crew import build_delivery_crew
 
 ARTIFACTS = build_artifact_paths()
 
