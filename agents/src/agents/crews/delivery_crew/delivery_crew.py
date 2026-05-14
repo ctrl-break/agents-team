@@ -1,4 +1,5 @@
-"""Build the delivery crew — Backend, Frontend, QA, Architect produce implementation plans."""
+"""Build the delivery crew — Backend, Frontend, QA, Architect produce implementation plans
+and (in coding mode) actual source code."""
 
 from __future__ import annotations
 
@@ -10,7 +11,13 @@ from crewai import Agent, Task, Crew, Process
 
 from agents.artifacts import build_artifact_paths
 from agents.llm_factory import build_llm
-from agents.tools.file_tools import list_files, read_text_file
+from agents.tools.file_tools import (
+    list_files,
+    read_text_file,
+    write_app_file,
+    write_text_file,
+    create_app_directory,
+)
 from agents.tools.common_tools import (
     check_markdown_links,
     count_lines,
@@ -30,11 +37,48 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def _build_agents() -> dict[str, Agent]:
+def _build_agents(*, coding_mode: bool = False) -> dict[str, Agent]:
     agents_cfg = _load_yaml(CONFIG_DIR / "agents.yaml")
     llm = build_llm()
 
-    common_tools = [read_text_file, list_files, search_code]
+    read_tools = [read_text_file, list_files, search_code]
+    write_tools = [write_app_file, write_text_file, create_app_directory]
+
+    if coding_mode:
+        return {
+            "backend_engineer": Agent(
+                config=agents_cfg["backend_engineer"],
+                llm=llm,
+                tools=read_tools + write_tools + [validate_yaml, validate_json, extract_headings],
+                verbose=True,
+                allow_code_execution=False,
+            ),
+            "frontend_engineer": Agent(
+                config=agents_cfg["frontend_engineer"],
+                llm=llm,
+                tools=read_tools + write_tools + [validate_json, extract_headings],
+                verbose=True,
+                allow_code_execution=False,
+            ),
+            "qa_engineer": Agent(
+                config=agents_cfg["qa_engineer"],
+                llm=llm,
+                tools=read_tools + write_tools + [check_markdown_links, count_lines, extract_headings],
+                verbose=True,
+                allow_code_execution=False,
+            ),
+            "architect_devops": Agent(
+                config=agents_cfg["architect_devops"],
+                llm=llm,
+                tools=read_tools + write_tools
+                + [validate_yaml, validate_json, check_markdown_links, count_lines, extract_headings],
+                verbose=True,
+                allow_code_execution=False,
+            ),
+        }
+
+    # Planning mode — read-only common tools
+    common_tools = read_tools
 
     return {
         "backend_engineer": Agent(
@@ -135,6 +179,209 @@ def build_delivery_crew(
     return Crew(
         agents=list(agents.values()),
         tasks=[backend_task, frontend_task, qa_task, architecture_task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+
+def build_coding_crew(
+    approved_spec: str,
+    backend_plan: str = "",
+    frontend_plan: str = "",
+    user_request: str | None = None,
+    feedback: str = "",
+) -> Crew:
+    """Return a Crew that writes actual source code from approved plans.
+
+    Uses the SAME agents as build_delivery_crew but in CODING mode:
+    - Agents get write tools (write_app_file, create_app_directory)
+    - Tasks come from tasks_code.yaml instead of tasks.yaml
+    - Output is real source files under apps/, not docs/
+
+    Args:
+        approved_spec: The approved specification text.
+        backend_plan: Backend implementation plan text (from planning phase).
+        frontend_plan: Frontend implementation plan text (from planning phase).
+        user_request: Original project request (optional extra context).
+        feedback: Optional fixes/improvements to incorporate into the code.
+    """
+    agents = _build_agents(coding_mode=True)
+    tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
+
+    common_context = f"\n\nApproved specification:\n{approved_spec}"
+    if backend_plan:
+        common_context += f"\n\nBackend implementation plan:\n{backend_plan}"
+    if frontend_plan:
+        common_context += f"\n\nFrontend implementation plan:\n{frontend_plan}"
+    if user_request:
+        common_context = f"\n\nOriginal project request:\n{user_request}" + common_context
+
+    if feedback.strip():
+        common_context += (
+            f"\n\n⚠️ IMPORTANT — FIXES REQUIRED:"
+            f"\nThe previous code generation was reviewed and the following changes are needed."
+            f"\nPlease update the source code to address ALL of these points:\n\n"
+            f"{feedback}"
+        )
+
+    backend_task = Task(
+        description=tasks_cfg["backend_code_task"]["description"] + common_context,
+        expected_output=tasks_cfg["backend_code_task"]["expected_output"],
+        agent=agents["backend_engineer"],
+        markdown=True,
+    )
+
+    frontend_task = Task(
+        description=tasks_cfg["frontend_code_task"]["description"] + common_context,
+        expected_output=tasks_cfg["frontend_code_task"]["expected_output"],
+        agent=agents["frontend_engineer"],
+        context=[backend_task],
+        markdown=True,
+    )
+
+    qa_task = Task(
+        description=tasks_cfg["qa_code_task"]["description"] + common_context,
+        expected_output=tasks_cfg["qa_code_task"]["expected_output"],
+        agent=agents["qa_engineer"],
+        context=[backend_task, frontend_task],
+        markdown=True,
+    )
+
+    devops_task = Task(
+        description=tasks_cfg["devops_code_task"]["description"] + common_context,
+        expected_output=tasks_cfg["devops_code_task"]["expected_output"],
+        agent=agents["architect_devops"],
+        context=[backend_task, frontend_task, qa_task],
+        markdown=True,
+    )
+
+    return Crew(
+        agents=list(agents.values()),
+        tasks=[backend_task, frontend_task, qa_task, devops_task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+
+def _make_context(
+    approved_spec: str,
+    backend_plan: str = "",
+    frontend_plan: str = "",
+    user_request: str | None = None,
+    feedback: str = "",
+) -> str:
+    """Build common context string for coding sub-phase crews."""
+    ctx = f"\n\nApproved specification:\n{approved_spec}"
+    if backend_plan:
+        ctx += f"\n\nBackend implementation plan:\n{backend_plan}"
+    if frontend_plan:
+        ctx += f"\n\nFrontend implementation plan:\n{frontend_plan}"
+    if user_request:
+        ctx = f"\n\nOriginal project request:\n{user_request}" + ctx
+
+    if feedback.strip():
+        ctx += (
+            f"\n\n⚠️ IMPORTANT — FIXES REQUIRED:"
+            f"\nThe previous code generation was reviewed and the following changes are needed."
+            f"\nPlease update the source code to address ALL of these points:\n\n"
+            f"{feedback}"
+        )
+    return ctx
+
+
+def build_coding_backend_crew(
+    approved_spec: str,
+    backend_plan: str = "",
+    user_request: str | None = None,
+    feedback: str = "",
+) -> Crew:
+    """Crew for CODING_BACKEND sub-phase — writes backend source code only."""
+    agents = _build_agents(coding_mode=True)
+    tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
+    ctx = _make_context(approved_spec, backend_plan=backend_plan, user_request=user_request, feedback=feedback)
+
+    task = Task(
+        description=tasks_cfg["backend_code_task"]["description"] + ctx,
+        expected_output=tasks_cfg["backend_code_task"]["expected_output"],
+        agent=agents["backend_engineer"],
+        markdown=True,
+    )
+    return Crew(
+        agents=[agents["backend_engineer"]],
+        tasks=[task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+
+def build_coding_frontend_crew(
+    approved_spec: str,
+    frontend_plan: str = "",
+    user_request: str | None = None,
+    feedback: str = "",
+) -> Crew:
+    """Crew for CODING_FRONTEND sub-phase — writes frontend source code only."""
+    agents = _build_agents(coding_mode=True)
+    tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
+    ctx = _make_context(approved_spec, frontend_plan=frontend_plan, user_request=user_request, feedback=feedback)
+
+    task = Task(
+        description=tasks_cfg["frontend_code_task"]["description"] + ctx,
+        expected_output=tasks_cfg["frontend_code_task"]["expected_output"],
+        agent=agents["frontend_engineer"],
+        markdown=True,
+    )
+    return Crew(
+        agents=[agents["frontend_engineer"]],
+        tasks=[task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+
+def build_coding_tests_crew(
+    approved_spec: str,
+    user_request: str | None = None,
+    feedback: str = "",
+) -> Crew:
+    """Crew for CODING_TESTS sub-phase — writes tests and QA artifacts only."""
+    agents = _build_agents(coding_mode=True)
+    tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
+    ctx = _make_context(approved_spec, user_request=user_request, feedback=feedback)
+
+    task = Task(
+        description=tasks_cfg["qa_code_task"]["description"] + ctx,
+        expected_output=tasks_cfg["qa_code_task"]["expected_output"],
+        agent=agents["qa_engineer"],
+        markdown=True,
+    )
+    return Crew(
+        agents=[agents["qa_engineer"]],
+        tasks=[task],
+        process=Process.sequential,
+        verbose=True,
+    )
+
+
+def build_coding_devops_crew(
+    approved_spec: str,
+    user_request: str | None = None,
+    feedback: str = "",
+) -> Crew:
+    """Crew for CODING_DEVOPS sub-phase — writes Docker, compose, env, README."""
+    agents = _build_agents(coding_mode=True)
+    tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
+    ctx = _make_context(approved_spec, user_request=user_request, feedback=feedback)
+
+    task = Task(
+        description=tasks_cfg["devops_code_task"]["description"] + ctx,
+        expected_output=tasks_cfg["devops_code_task"]["expected_output"],
+        agent=agents["architect_devops"],
+        markdown=True,
+    )
+    return Crew(
+        agents=[agents["architect_devops"]],
+        tasks=[task],
         process=Process.sequential,
         verbose=True,
     )

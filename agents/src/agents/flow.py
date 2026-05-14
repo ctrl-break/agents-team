@@ -29,7 +29,14 @@ from typing import Optional
 from agents.artifacts import build_artifact_paths
 from agents.config.pipeline_config import load_pipeline_config
 from agents.crews.planning_crew.planning_crew import build_planning_crew
-from agents.crews.delivery_crew.delivery_crew import build_delivery_crew
+from agents.crews.delivery_crew.delivery_crew import (
+    build_delivery_crew,
+    build_coding_crew,
+    build_coding_backend_crew,
+    build_coding_frontend_crew,
+    build_coding_tests_crew,
+    build_coding_devops_crew,
+)
 from agents.crews.review_crew.review_crew import (
     build_tech_review_crew,
     build_cross_review_crew,
@@ -485,6 +492,183 @@ def _phase_validation(
 #  Resumable pipeline runner
 # ──────────────────────────────────────────────────────────────────────
 
+def _get_approved_spec(state: PipelineState) -> str:
+    """Resolve approved specification from state or file."""
+    return state.approved_spec or (
+        ARTIFACTS.approved_spec.exists() and ARTIFACTS.approved_spec.read_text(encoding="utf-8")
+    ) or ""
+
+
+def _get_backend_plan(state: PipelineState) -> str:
+    """Resolve backend plan from state or file."""
+    return state.backend_plan or (
+        ARTIFACTS.backend_plan.exists() and ARTIFACTS.backend_plan.read_text(encoding="utf-8")
+    ) or ""
+
+
+def _get_frontend_plan(state: PipelineState) -> str:
+    """Resolve frontend plan from state or file."""
+    return state.frontend_plan or (
+        ARTIFACTS.frontend_plan.exists() and ARTIFACTS.frontend_plan.read_text(encoding="utf-8")
+    ) or ""
+
+
+def _discover_code_files(state: PipelineState) -> None:
+    """Scan apps/ directories and update state with discovered file lists."""
+    apps_dir = Path("apps")
+    backend_dir = apps_dir / "backend"
+    frontend_dir = apps_dir / "frontend"
+
+    state.backend_code_files = (
+        [p.as_posix() for p in sorted(backend_dir.rglob("*.py"))]
+        if backend_dir.exists()
+        else []
+    )
+    state.frontend_code_files = (
+        [p.as_posix() for p in sorted(frontend_dir.rglob("*")) if p.is_file()]
+        if frontend_dir.exists()
+        else []
+    )
+    state.test_files = (
+        [p.as_posix() for p in sorted(Path("apps/tests").rglob("*")) if p.is_file()]
+        if Path("apps/tests").exists()
+        else []
+    )
+    state.devops_files = (
+        [p.as_posix() for p in [
+            Path("apps/Dockerfile.backend"),
+            Path("apps/Dockerfile.frontend"),
+            Path("apps/docker-compose.yml"),
+            Path("apps/.env.example"),
+            Path("README.md"),
+        ] if p.exists()]
+    )
+    state.code_summary = (
+        f"Backend: {len(state.backend_code_files)} files, "
+        f"Frontend: {len(state.frontend_code_files)} files, "
+        f"Tests: {len(state.test_files)} files, "
+        f"DevOps: {len(state.devops_files)} files"
+    )
+
+    print(f"\n  📁 Generated code summary:")
+    print(f"     Backend files: {len(state.backend_code_files)}")
+    print(f"     Frontend files: {len(state.frontend_code_files)}")
+    print(f"     Test files: {len(state.test_files)}")
+    print(f"     DevOps files: {len(state.devops_files)}")
+    if state.backend_code_files:
+        print(f"\n  Backend:")
+        for f in state.backend_code_files:
+            print(f"    • {f}")
+    if state.frontend_code_files:
+        print(f"\n  Frontend:")
+        for f in state.frontend_code_files:
+            print(f"    • {f}")
+
+
+def _phase_coding_backend(
+    state: PipelineState,
+    thresholds: PipelineThresholds,
+    fixes_text: str = "",
+) -> PipelineState:
+    """Sub-phase 6a: Write backend source code."""
+    _print_phase_header("6a: CODING BACKEND")
+    state.current_phase = Phase.CODING_BACKEND
+
+    approved_spec = _get_approved_spec(state)
+    if not approved_spec:
+        print("  ⚠ No approved specification found. Skipping.")
+        state.errors.append("No approved spec for coding")
+        return state
+
+    backend_plan = _get_backend_plan(state)
+    crew = build_coding_backend_crew(
+        approved_spec=approved_spec,
+        backend_plan=backend_plan,
+        user_request=state.request,
+        feedback=fixes_text,
+    )
+    crew.kickoff()
+    _discover_code_files(state)
+    return state
+
+
+def _phase_coding_frontend(
+    state: PipelineState,
+    thresholds: PipelineThresholds,
+    fixes_text: str = "",
+) -> PipelineState:
+    """Sub-phase 6b: Write frontend source code."""
+    _print_phase_header("6b: CODING FRONTEND")
+    state.current_phase = Phase.CODING_FRONTEND
+
+    approved_spec = _get_approved_spec(state)
+    if not approved_spec:
+        print("  ⚠ No approved specification found. Skipping.")
+        state.errors.append("No approved spec for coding")
+        return state
+
+    frontend_plan = _get_frontend_plan(state)
+    crew = build_coding_frontend_crew(
+        approved_spec=approved_spec,
+        frontend_plan=frontend_plan,
+        user_request=state.request,
+        feedback=fixes_text,
+    )
+    crew.kickoff()
+    _discover_code_files(state)
+    return state
+
+
+def _phase_coding_tests(
+    state: PipelineState,
+    thresholds: PipelineThresholds,
+    fixes_text: str = "",
+) -> PipelineState:
+    """Sub-phase 6c: Write tests."""
+    _print_phase_header("6c: CODING TESTS")
+    state.current_phase = Phase.CODING_TESTS
+
+    approved_spec = _get_approved_spec(state)
+    if not approved_spec:
+        print("  ⚠ No approved specification found. Skipping.")
+        state.errors.append("No approved spec for coding")
+        return state
+
+    crew = build_coding_tests_crew(
+        approved_spec=approved_spec,
+        user_request=state.request,
+        feedback=fixes_text,
+    )
+    crew.kickoff()
+    _discover_code_files(state)
+    return state
+
+
+def _phase_coding_devops(
+    state: PipelineState,
+    thresholds: PipelineThresholds,
+    fixes_text: str = "",
+) -> PipelineState:
+    """Sub-phase 6d: Write DevOps files (Docker, compose, env, README)."""
+    _print_phase_header("6d: CODING DEVOPS")
+    state.current_phase = Phase.CODING_DEVOPS
+
+    approved_spec = _get_approved_spec(state)
+    if not approved_spec:
+        print("  ⚠ No approved specification found. Skipping.")
+        state.errors.append("No approved spec for coding")
+        return state
+
+    crew = build_coding_devops_crew(
+        approved_spec=approved_spec,
+        user_request=state.request,
+        feedback=fixes_text,
+    )
+    crew.kickoff()
+    _discover_code_files(state)
+    return state
+
+
 def _phase_order() -> list[Phase]:
     """Return phases in execution order."""
     return [
@@ -494,6 +678,10 @@ def _phase_order() -> list[Phase]:
         Phase.IMPLEMENTATION,
         Phase.QA_ARCHITECTURE,
         Phase.VALIDATION,
+        Phase.CODING_BACKEND,
+        Phase.CODING_FRONTEND,
+        Phase.CODING_TESTS,
+        Phase.CODING_DEVOPS,
     ]
 
 
@@ -566,6 +754,18 @@ def run_pipeline(
 
             elif phase == Phase.VALIDATION:
                 state = _phase_validation(state, thresholds)
+
+            elif phase == Phase.CODING_BACKEND:
+                state = _phase_coding_backend(state, thresholds, fixes_text=fixes_text)
+
+            elif phase == Phase.CODING_FRONTEND:
+                state = _phase_coding_frontend(state, thresholds, fixes_text=fixes_text)
+
+            elif phase == Phase.CODING_TESTS:
+                state = _phase_coding_tests(state, thresholds, fixes_text=fixes_text)
+
+            elif phase == Phase.CODING_DEVOPS:
+                state = _phase_coding_devops(state, thresholds, fixes_text=fixes_text)
 
     except KeyboardInterrupt:
         print("\n\n  ⛔ Pipeline interrupted by user.")

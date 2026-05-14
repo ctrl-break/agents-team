@@ -26,6 +26,11 @@ class Phase(str, Enum):
     QA_ARCHITECTURE = "qa_architecture"
     VALIDATION = "validation"
     DELIVERY = "delivery"
+    CODING = "coding"
+    CODING_BACKEND = "coding_backend"
+    CODING_FRONTEND = "coding_frontend"
+    CODING_TESTS = "coding_tests"
+    CODING_DEVOPS = "coding_devops"
 
 
 class ReviewDecision(str, Enum):
@@ -202,6 +207,13 @@ class PipelineState(BaseModel):
     # ── Phase 6: Delivery ──
     quality: QualitySummary = Field(default_factory=QualitySummary)
     delivery_summary: str = Field(default="")
+
+    # ── Phase 7: Coding ──
+    backend_code_files: list[str] = Field(default_factory=list)
+    frontend_code_files: list[str] = Field(default_factory=list)
+    test_files: list[str] = Field(default_factory=list)
+    devops_files: list[str] = Field(default_factory=list)
+    code_summary: str = Field(default="")
 
     # ── Мета ──
     errors: list[str] = Field(

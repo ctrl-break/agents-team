@@ -1,0 +1,124 @@
+backend_code_task:
+  description: >
+    You are now in CODING mode. Based on the approved specification
+    and the backend implementation plan, WRITE THE ACTUAL CODE.
+
+    Create all files under apps/backend/. Use write_app_file for each file
+    and create_app_directory for any subdirectories.
+
+    Required files:
+    - main.py (FastAPI application with CORS, lifespan, health check)
+    - models.py (SQLAlchemy or Pydantic models from the spec)
+    - database.py (connection, session management)
+    - routes/*.py (one file per resource, proper HTTP methods)
+    - schemas.py (Pydantic request/response schemas)
+    - requirements.txt or pyproject.toml
+    - tests/test_*.py (unit tests for models and routes)
+
+    Write complete, runnable, production-quality Python code.
+    Include docstrings, type hints, error handling, and input validation.
+    No stubs, no TODOs, no placeholders.
+    Read the backend plan first to understand the intended design.
+
+    Keep each file focused and under 300 lines when possible.
+    Split logic into modules if a file would grow too large.
+  expected_output: >
+    Confirmation that all backend source files have been created
+    under apps/backend/, with a summary of what was written.
+
+frontend_code_task:
+  description: >
+    You are now in CODING mode. Based on the approved specification
+    and the frontend implementation plan, WRITE THE ACTUAL CODE.
+
+    Create all files under apps/frontend/. Use write_app_file for each file
+    and create_app_directory for any subdirectories.
+
+    Required files:
+    - package.json (with React, TypeScript, Vite, dependencies)
+    - tsconfig.json, vite.config.ts
+    - index.html
+    - src/main.tsx (React entry point)
+    - src/App.tsx (root component with routing)
+    - src/api/client.ts (typed HTTP client using the backend API)
+    - src/pages/*.tsx (one page component per route)
+    - src/components/*.tsx (reusable UI components)
+    - src/hooks/*.ts (custom hooks for data fetching, state)
+    - src/types/*.ts (shared TypeScript types/interfaces)
+
+    Use React 18+ with TypeScript, React Router v6, and Tailwind CSS.
+    Write clean, typed, accessible components.
+    Handle loading, empty, and error states in every component.
+    No stubs, no TODOs, no placeholders.
+    Read the frontend plan first to understand the intended design.
+
+    Read the backend plan as well to understand API contracts
+    (endpoint paths, request/response shapes).
+  expected_output: >
+    Confirmation that all frontend source files have been created
+    under apps/frontend/, with a summary of what was written.
+  context_from:
+    - backend_code_task
+
+qa_code_task:
+  description: >
+    You are now in CODING mode. Based on the approved specification,
+    the implementation plans, and the generated source code,
+    WRITE THE ACTUAL TEST SUITE.
+
+    Create test files under apps/tests/. Use write_app_file for each file.
+
+    Required:
+    - apps/tests/conftest.py (pytest fixtures, test client, database setup)
+    - apps/tests/test_backend/test_*.py (backend unit + integration tests)
+    - apps/tests/test_frontend/*.test.ts (frontend component + integration tests
+      using Vitest + React Testing Library)
+    - apps/tests/e2e/ (if applicable, playwright test scenarios in a README)
+
+    Tests must cover:
+    - Happy paths for every endpoint
+    - Edge cases (empty inputs, boundary values, missing fields)
+    - Error cases (invalid auth, not found, validation errors)
+    - Database transactions and rollbacks
+
+    Write tests that actually run — include proper imports, fixtures,
+    and assertions. Use the approved specification and QA plan
+    to determine test scenarios.
+
+    Read all generated source files to understand what to test.
+  expected_output: >
+    Confirmation that all test files have been created under apps/tests/,
+    with a summary of test coverage and scenarios.
+
+devops_code_task:
+  description: >
+    You are now in CODING mode. Create the deployment and operations
+    configuration for the project.
+
+    Create files under apps/ (top level) and the repo root. Use write_app_file
+    for apps/ files and write_text_file for root-level docs.
+
+    Required files:
+    - apps/Dockerfile.backend (multi-stage, optimized Python image)
+    - apps/Dockerfile.frontend (multi-stage, nginx serving static build)
+    - apps/docker-compose.yml (backend + frontend + database services)
+    - apps/.env.example (all required env vars with dummy values)
+    - README.md at repo root (project overview, how to run, API docs link)
+
+    Docker files must:
+    - Use slim base images
+    - Install only production dependencies
+    - Expose correct ports
+    - Include health checks
+
+    docker-compose.yml must:
+    - Define backend, frontend, and database services
+    - Use named volumes for database persistence
+    - Set up networking between services
+    - Include environment variable references
+
+    Read the architecture review and all generated source files
+    to understand the deployment requirements.
+  expected_output: >
+    Confirmation that all DevOps files have been created,
+    with a summary of services and configuration.
