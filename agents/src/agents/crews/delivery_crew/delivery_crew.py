@@ -65,8 +65,20 @@ def _build_agents() -> dict[str, Agent]:
     }
 
 
-def build_delivery_crew(user_request: str | None, approved_plan: str) -> Crew:
-    """Return a Crew that produces implementation plans from an approved specification."""
+def build_delivery_crew(
+    user_request: str | None,
+    approved_plan: str,
+    feedback: str = "",
+) -> Crew:
+    """Return a Crew that produces implementation plans from an approved specification.
+
+    Args:
+        user_request: The original project request text.
+        approved_plan: The approved specification content.
+        feedback: Optional feedback/fixes to incorporate into the implementation.
+                  When provided, agents will adjust their output to address these
+                  improvements instead of generating from scratch.
+    """
     agents = _build_agents()
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks.yaml")
 
@@ -76,6 +88,14 @@ def build_delivery_crew(user_request: str | None, approved_plan: str) -> Crew:
     )
     if user_request:
         common_context = f"\n\nOriginal project request:\n{user_request}" + common_context
+
+    if feedback.strip():
+        common_context += (
+            f"\n\n⚠️ IMPORTANT — FIXES REQUIRED:"
+            f"\nThe previous implementation was reviewed and the following changes are needed."
+            f"\nPlease update the implementation plans to address ALL of these points:\n\n"
+            f"{feedback}"
+        )
 
     backend_task = Task(
         description=tasks_cfg["backend_task"]["description"] + common_context,
