@@ -3,20 +3,29 @@ backend_code_task:
     You are now in CODING mode. Based on the approved specification
     and the backend implementation plan, WRITE THE ACTUAL CODE.
 
-    Create all files under apps/backend/. Use write_app_file for each file
-    and create_app_directory for any subdirectories.
+    ⚠️ IMPORTANT — Technology Stack:
+    The approved specification contains a "## Technology Stack" section.
+    READ IT and use EXACTLY the technologies listed there.
+    - Use the Backend Language and Backend Framework from the spec.
+    - If spec says Python/FastAPI → write Python/FastAPI.
+    - If spec says Go/Gin → write Go/Gin.
+    - If spec says Rust/Actix → write Rust/Actix.
+    - Use the ORM and Database from the spec.
+    - Use the package manager from the spec.
+    - NEVER default to a specific stack — ALWAYS read it from the approved spec.
 
-    Required files:
-    - main.py (FastAPI application with CORS, lifespan, health check)
-    - models.py (SQLAlchemy or Pydantic models from the spec)
-    - database.py (connection, session management)
-    - routes/*.py (one file per resource, proper HTTP methods)
-    - schemas.py (Pydantic request/response schemas)
-    - requirements.txt or pyproject.toml
-    - tests/test_*.py (unit tests for models and routes)
+    Required files (adapt names/extensions to the target language):
+    - main.* — application entry point (using the framework from spec)
+    - models.* — data models (using the ORM from spec)
+    - database.* — connection and session management
+    - routes/* (or equivalent) — one file per resource
+    - schemas.* or types.* — request/response types
+    - Package file (requirements.txt, go.mod, Cargo.toml, package.json, etc.)
+    - tests/test_* — unit tests using the backend test framework from spec
 
-    Write complete, runnable, production-quality Python code.
-    Include docstrings, type hints, error handling, and input validation.
+    Write complete, runnable, production-quality code.
+    Include docstrings/comments, type hints (where applicable),
+    error handling, and input validation.
     No stubs, no TODOs, no placeholders.
     Read the backend plan first to understand the intended design.
 
@@ -24,39 +33,49 @@ backend_code_task:
     Split logic into modules if a file would grow too large.
   expected_output: >
     Confirmation that all backend source files have been created
-    under apps/backend/, with a summary of what was written.
+    under the backend directory specified in the spec's Project Structure,
+    with a summary of what was written.
 
 frontend_code_task:
   description: >
     You are now in CODING mode. Based on the approved specification
     and the frontend implementation plan, WRITE THE ACTUAL CODE.
 
-    Create all files under apps/frontend/. Use write_app_file for each file
-    and create_app_directory for any subdirectories.
+    ⚠️ IMPORTANT — Check if frontend is required FIRST:
+    Read the "## Technology Stack" section of the approved specification.
+    If Frontend Framework is "none" or empty → SKIP THIS TASK and output
+    "Frontend not required per specification."
 
-    Required files:
-    - package.json (with React, TypeScript, Vite, dependencies)
-    - tsconfig.json, vite.config.ts
+    If frontend IS required, use EXACTLY the technologies listed:
+    - Use the Frontend Language and Frontend Framework from the spec.
+    - If spec says React/TypeScript → write React + TypeScript.
+    - If spec says Vue/JavaScript → write Vue + JavaScript.
+    - If spec says Svelte → write Svelte.
+    - Use the CSS approach and Router from the spec.
+    - Use the build tool from the spec.
+    - NEVER default to a specific frontend stack.
+
+    Required files (adapt to the target framework):
+    - package.json (with dependencies matching the spec's framework)
+    - TypeScript config (tsconfig.json or jsconfig.json)
+    - Build tool config (vite.config.*, webpack.config.*, etc.)
     - index.html
-    - src/main.tsx (React entry point)
-    - src/App.tsx (root component with routing)
-    - src/api/client.ts (typed HTTP client using the backend API)
-    - src/pages/*.tsx (one page component per route)
-    - src/components/*.tsx (reusable UI components)
-    - src/hooks/*.ts (custom hooks for data fetching, state)
-    - src/types/*.ts (shared TypeScript types/interfaces)
+    - src entry point (main.tsx, main.ts, App.vue, etc.)
+    - src/App.* (root component with routing)
+    - src/api/client.* (typed HTTP client using the backend API)
+    - src/pages/* (one page component per route)
+    - src/components/* (reusable UI components)
+    - src/hooks/* or composables/* (data fetching, state management)
+    - src/types/* (shared types/interfaces)
 
-    Use React 18+ with TypeScript, React Router v6, and Tailwind CSS.
     Write clean, typed, accessible components.
     Handle loading, empty, and error states in every component.
     No stubs, no TODOs, no placeholders.
-    Read the frontend plan first to understand the intended design.
-
-    Read the backend plan as well to understand API contracts
-    (endpoint paths, request/response shapes).
+    Read the frontend plan and backend plan to understand API contracts.
   expected_output: >
     Confirmation that all frontend source files have been created
-    under apps/frontend/, with a summary of what was written.
+    under the frontend directory specified in the spec's Project Structure,
+    or a clear statement that frontend is not required.
   context_from:
     - backend_code_task
 
@@ -66,14 +85,25 @@ qa_code_task:
     the implementation plans, and the generated source code,
     WRITE THE ACTUAL TEST SUITE.
 
-    Create test files under apps/tests/. Use write_app_file for each file.
+    ⚠️ IMPORTANT — Technology Stack:
+    The approved specification contains a "## Technology Stack" section.
+    READ IT to determine test frameworks:
+    - Use the Backend Test Framework from the spec (pytest, go test, unittest, etc.)
+    - Use the Frontend Test Framework from the spec (vitest, jest, etc.)
+    - Use the Component Test Library from the spec
+    - Use the E2E Framework from the spec
+    - If any of these are empty/not applicable, skip that layer
+
+    Also read the "## Project Structure" section for test directory location.
+
+    Create test files under the test directory specified in the spec.
+    Use write_app_file for each file.
 
     Required:
-    - apps/tests/conftest.py (pytest fixtures, test client, database setup)
-    - apps/tests/test_backend/test_*.py (backend unit + integration tests)
-    - apps/tests/test_frontend/*.test.ts (frontend component + integration tests
-      using Vitest + React Testing Library)
-    - apps/tests/e2e/ (if applicable, playwright test scenarios in a README)
+    - conftest.py (if pytest) or setup file for the backend test framework
+    - Backend unit + integration tests
+    - Frontend component + integration tests (if frontend exists)
+    - E2E test scenarios (if applicable)
 
     Tests must cover:
     - Happy paths for every endpoint
@@ -87,7 +117,7 @@ qa_code_task:
 
     Read all generated source files to understand what to test.
   expected_output: >
-    Confirmation that all test files have been created under apps/tests/,
+    Confirmation that all test files have been created,
     with a summary of test coverage and scenarios.
 
 devops_code_task:
@@ -95,27 +125,40 @@ devops_code_task:
     You are now in CODING mode. Create the deployment and operations
     configuration for the project.
 
-    Create files under apps/ (top level) and the repo root. Use write_app_file
-    for apps/ files and write_text_file for root-level docs.
+    ⚠️ IMPORTANT — Technology Stack and Project Structure:
+    The approved specification contains "## Technology Stack" and
+    "## Project Structure" sections. READ BOTH to determine:
+    - Container Runtime (docker, podman, or none)
+    - Backend Server (uvicorn, gunicorn, node, etc.)
+    - Frontend Server (nginx, caddy, or none if no frontend)
+    - CI/CD platform
+    - Backend Directory and Frontend Directory from spec
+    - Whether Docker is even needed (CLI tools may not need it)
 
-    Required files:
-    - apps/Dockerfile.backend (multi-stage, optimized Python image)
-    - apps/Dockerfile.frontend (multi-stage, nginx serving static build)
-    - apps/docker-compose.yml (backend + frontend + database services)
-    - apps/.env.example (all required env vars with dummy values)
+    Create Docker/DevOps files using the paths from spec's Project Structure.
+    If Container Runtime is empty → SKIP Docker files and output
+    "Containerization not required per specification."
+
+    Required files (if containerization is needed):
+    - Dockerfile.backend (use the backend language + server from spec)
+    - Dockerfile.frontend (use the frontend server from spec, skip if no frontend)
+    - docker-compose.yml (backend + frontend + database services)
+    - .env.example (all required env vars with dummy values)
     - README.md at repo root (project overview, how to run, API docs link)
 
     Docker files must:
-    - Use slim base images
+    - Use slim base images appropriate for the target language
     - Install only production dependencies
     - Expose correct ports
     - Include health checks
 
-    docker-compose.yml must:
+    docker-compose.yml must (if frontend exists):
     - Define backend, frontend, and database services
     - Use named volumes for database persistence
     - Set up networking between services
     - Include environment variable references
+
+    If no frontend, docker-compose.yml should only include backend + database.
 
     Read the architecture review and all generated source files
     to understand the deployment requirements.

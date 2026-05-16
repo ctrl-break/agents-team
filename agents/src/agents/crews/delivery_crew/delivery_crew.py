@@ -4,13 +4,14 @@ and (in coding mode) actual source code."""
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 from crewai import Agent, Task, Crew, Process
 
 from agents.artifacts import build_artifact_paths
 from agents.llm_factory import build_llm
+from agents.state import TechStack, DirectoryLayout
 from agents.tools.file_tools import (
     list_files,
     read_text_file,
@@ -113,6 +114,8 @@ def build_delivery_crew(
     user_request: str | None,
     approved_plan: str,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Return a Crew that produces implementation plans from an approved specification.
 
@@ -122,6 +125,8 @@ def build_delivery_crew(
         feedback: Optional feedback/fixes to incorporate into the implementation.
                   When provided, agents will adjust their output to address these
                   improvements instead of generating from scratch.
+        tech_stack: Parsed technology stack from the spec (injected into prompts).
+        directory_layout: Parsed directory layout from the spec (injected into prompts).
     """
     agents = _build_agents()
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks.yaml")
@@ -130,6 +135,17 @@ def build_delivery_crew(
         f"\n\nApproved specification location:\n{ARTIFACTS.approved_spec.as_posix()}"
         f"\n\nApproved specification content:\n{approved_plan}"
     )
+    if tech_stack:
+        common_context += f"\n\n{tech_stack.to_context_string()}"
+    if directory_layout:
+        common_context += (
+            f"\n\nProject Structure from spec:"
+            f"\n- Project Type: {directory_layout.project_type}"
+            f"\n- Source Root: {directory_layout.source_root}"
+            f"\n- Backend Dir: {directory_layout.backend_dir}"
+            f"\n- Frontend Dir: {directory_layout.frontend_dir}"
+            f"\n- Test Dir: {directory_layout.test_dir}"
+        )
     if user_request:
         common_context = f"\n\nOriginal project request:\n{user_request}" + common_context
 
@@ -190,6 +206,8 @@ def build_coding_crew(
     frontend_plan: str = "",
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Return a Crew that writes actual source code from approved plans.
 
@@ -204,11 +222,24 @@ def build_coding_crew(
         frontend_plan: Frontend implementation plan text (from planning phase).
         user_request: Original project request (optional extra context).
         feedback: Optional fixes/improvements to incorporate into the code.
+        tech_stack: Parsed technology stack from the spec (injected into prompts).
+        directory_layout: Parsed directory layout from the spec (injected into prompts).
     """
     agents = _build_agents(coding_mode=True)
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
 
     common_context = f"\n\nApproved specification:\n{approved_spec}"
+    if tech_stack:
+        common_context += f"\n\n{tech_stack.to_context_string()}"
+    if directory_layout:
+        common_context += (
+            f"\n\nProject Structure from spec:"
+            f"\n- Project Type: {directory_layout.project_type}"
+            f"\n- Source Root: {directory_layout.source_root}"
+            f"\n- Backend Dir: {directory_layout.backend_dir}"
+            f"\n- Frontend Dir: {directory_layout.frontend_dir}"
+            f"\n- Test Dir: {directory_layout.test_dir}"
+        )
     if backend_plan:
         common_context += f"\n\nBackend implementation plan:\n{backend_plan}"
     if frontend_plan:
@@ -269,9 +300,22 @@ def _make_context(
     frontend_plan: str = "",
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> str:
     """Build common context string for coding sub-phase crews."""
     ctx = f"\n\nApproved specification:\n{approved_spec}"
+    if tech_stack:
+        ctx += f"\n\n{tech_stack.to_context_string()}"
+    if directory_layout:
+        ctx += (
+            f"\n\nProject Structure from spec:"
+            f"\n- Project Type: {directory_layout.project_type}"
+            f"\n- Source Root: {directory_layout.source_root}"
+            f"\n- Backend Dir: {directory_layout.backend_dir}"
+            f"\n- Frontend Dir: {directory_layout.frontend_dir}"
+            f"\n- Test Dir: {directory_layout.test_dir}"
+        )
     if backend_plan:
         ctx += f"\n\nBackend implementation plan:\n{backend_plan}"
     if frontend_plan:
@@ -294,11 +338,20 @@ def build_coding_backend_crew(
     backend_plan: str = "",
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Crew for CODING_BACKEND sub-phase — writes backend source code only."""
     agents = _build_agents(coding_mode=True)
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
-    ctx = _make_context(approved_spec, backend_plan=backend_plan, user_request=user_request, feedback=feedback)
+    ctx = _make_context(
+        approved_spec,
+        backend_plan=backend_plan,
+        user_request=user_request,
+        feedback=feedback,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
+    )
 
     task = Task(
         description=tasks_cfg["backend_code_task"]["description"] + ctx,
@@ -319,11 +372,20 @@ def build_coding_frontend_crew(
     frontend_plan: str = "",
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Crew for CODING_FRONTEND sub-phase — writes frontend source code only."""
     agents = _build_agents(coding_mode=True)
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
-    ctx = _make_context(approved_spec, frontend_plan=frontend_plan, user_request=user_request, feedback=feedback)
+    ctx = _make_context(
+        approved_spec,
+        frontend_plan=frontend_plan,
+        user_request=user_request,
+        feedback=feedback,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
+    )
 
     task = Task(
         description=tasks_cfg["frontend_code_task"]["description"] + ctx,
@@ -343,11 +405,19 @@ def build_coding_tests_crew(
     approved_spec: str,
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Crew for CODING_TESTS sub-phase — writes tests and QA artifacts only."""
     agents = _build_agents(coding_mode=True)
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
-    ctx = _make_context(approved_spec, user_request=user_request, feedback=feedback)
+    ctx = _make_context(
+        approved_spec,
+        user_request=user_request,
+        feedback=feedback,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
+    )
 
     task = Task(
         description=tasks_cfg["qa_code_task"]["description"] + ctx,
@@ -367,11 +437,19 @@ def build_coding_devops_crew(
     approved_spec: str,
     user_request: str | None = None,
     feedback: str = "",
+    tech_stack: Optional[TechStack] = None,
+    directory_layout: Optional[DirectoryLayout] = None,
 ) -> Crew:
     """Crew for CODING_DEVOPS sub-phase — writes Docker, compose, env, README."""
     agents = _build_agents(coding_mode=True)
     tasks_cfg = _load_yaml(CONFIG_DIR / "tasks_code.yaml")
-    ctx = _make_context(approved_spec, user_request=user_request, feedback=feedback)
+    ctx = _make_context(
+        approved_spec,
+        user_request=user_request,
+        feedback=feedback,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
+    )
 
     task = Task(
         description=tasks_cfg["devops_code_task"]["description"] + ctx,

@@ -13,12 +13,52 @@ pm_spec_task:
     - frontend scope
     - QA scope
     - architecture concerns
+
+    CRITICAL — you MUST determine and document the technology stack.
+    Infer the appropriate stack from the user's request:
+    - If the user says "Python + Django" → use Python/Django
+    - If the user says "Go REST API" → use Go/Gin or Go/Chi
+    - If the user says "Rust CLI tool" → use Rust/Clap, NO frontend, NO Docker (optional)
+    - If the user says "React SPA" → use React/TypeScript/Vite as frontend
+    - If the user says nothing specific → default to Python/FastAPI + React/TypeScript
+    - For CLI tools, libraries, or non-web projects: set frontend to "" (empty)
+
+    Document the technology stack in a "## Technology Stack" section with EXACTLY this format:
+    ```
+    ## Technology Stack
+    - Backend Language: <python|go|rust|typescript|...>
+    - Backend Framework: <fastapi|gin|actix|express|...>
+    - Frontend Language: <typescript|javascript|... or "none">
+    - Frontend Framework: <react|vue|svelte|... or "none">
+    - CSS Approach: <tailwind|css-modules|... or "none">
+    - Database: <postgresql|sqlite|mongodb|...>
+    - ORM: <sqlalchemy|prisma|gorm|...>
+    - Migration Tool: <alembic|prisma-migrate|golang-migrate|...>
+    - Backend Test Framework: <pytest|unittest|go-test|...>
+    - Frontend Test Framework: <vitest|jest|... or "none">
+    - Container Runtime: <docker|podman|...>
+    - Backend Server: <uvicorn|gunicorn|node|...>
+    - Frontend Server: <nginx|caddy|... or "none">
+    - E2E Framework: <playwright|cypress|... or "none">
+    ```
+
+    ALSO determine the project type and directory structure in "## Project Structure":
+    ```
+    ## Project Structure
+    - Project Type: <web|cli|library|mobile|desktop>
+    - Source Root: <apps|src|...>
+    - Backend Directory: <apps/backend|src|...>
+    - Frontend Directory: <apps/frontend|... or "none">
+    - Test Directory: <apps/tests|tests|...>
+    ```
+
     The output must be concise, implementation-oriented, and ready for approval.
     Use tools only to inspect repository structure or read existing files when helpful.
     Prefer narrow paths such as docs/, apps/, or agents/src/.
     Do not list the whole repository recursively unless absolutely necessary.
     Do not call write tools to save the result.
     The system will save the draft plan automatically to docs/specs/pending-plan.md.
-    Be concise. Limit output to 500-800 words.
+    Be concise. Limit output to 800-1200 words.
   expected_output: >
-    A complete technical specification in markdown, suitable for engineering work.
+    A complete technical specification in markdown with explicit Technology Stack
+    and Project Structure sections, suitable for engineering work.

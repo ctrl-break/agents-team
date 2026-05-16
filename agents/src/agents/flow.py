@@ -28,7 +28,11 @@ from typing import Optional
 
 from agents.artifacts import build_artifact_paths
 from agents.config.pipeline_config import load_pipeline_config
-from agents.crews.planning_crew.planning_crew import build_planning_crew
+from agents.crews.planning_crew.planning_crew import (
+    build_planning_crew,
+    parse_tech_stack,
+    parse_directory_layout,
+)
 from agents.crews.delivery_crew.delivery_crew import (
     build_delivery_crew,
     build_coding_crew,
@@ -384,11 +388,17 @@ def _phase_implementation(
 
     approved_plan = state.approved_spec or ARTIFACTS.approved_spec.read_text(encoding="utf-8")
 
+    # Parse tech_stack from spec
+    tech_stack = parse_tech_stack(approved_plan)
+    directory_layout = parse_directory_layout(approved_plan)
+
     # Build delivery crew (with optional fixes feedback)
     delivery_crew = build_delivery_crew(
         user_request=state.request,
         approved_plan=approved_plan,
         feedback=fixes_text,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
     )
     delivery_result = delivery_crew.kickoff()
     delivery_text = _crew_raw(delivery_result)
@@ -535,35 +545,43 @@ def _get_frontend_plan(state: PipelineState) -> str:
 
 
 def _discover_code_files(state: PipelineState) -> None:
-    """Scan apps/ directories and update state with discovered file lists."""
-    apps_dir = Path("apps")
-    backend_dir = apps_dir / "backend"
-    frontend_dir = apps_dir / "frontend"
+    """Scan project directories (from DirectoryLayout) and update state with discovered file lists."""
+    layout = state.directory_layout
+
+    backend_dir = Path(layout.backend_dir) if layout.backend_dir else None
+    frontend_dir = Path(layout.frontend_dir) if layout.frontend_dir else None
+    test_dir = Path(layout.test_dir) if layout.test_dir else None
 
     state.backend_code_files = (
         [p.as_posix() for p in sorted(backend_dir.rglob("*.py"))]
-        if backend_dir.exists()
+        if backend_dir and backend_dir.exists()
         else []
     )
     state.frontend_code_files = (
         [p.as_posix() for p in sorted(frontend_dir.rglob("*")) if p.is_file()]
-        if frontend_dir.exists()
+        if frontend_dir and frontend_dir.exists()
         else []
     )
     state.test_files = (
-        [p.as_posix() for p in sorted(Path("apps/tests").rglob("*")) if p.is_file()]
-        if Path("apps/tests").exists()
+        [p.as_posix() for p in sorted(test_dir.rglob("*")) if p.is_file()]
+        if test_dir and test_dir.exists()
         else []
     )
-    state.devops_files = (
-        [p.as_posix() for p in [
-            Path("apps/Dockerfile.backend"),
-            Path("apps/Dockerfile.frontend"),
-            Path("apps/docker-compose.yml"),
-            Path("apps/.env.example"),
-            Path("README.md"),
-        ] if p.exists()]
-    )
+
+    # DevOps — use DirectoryLayout paths
+    devops_candidates = []
+    if layout.dockerfile_backend:
+        devops_candidates.append(Path(layout.dockerfile_backend))
+    if layout.dockerfile_frontend:
+        devops_candidates.append(Path(layout.dockerfile_frontend))
+    if layout.docker_compose:
+        devops_candidates.append(Path(layout.docker_compose))
+    if layout.env_example:
+        devops_candidates.append(Path(layout.env_example))
+    if layout.readme:
+        devops_candidates.append(Path(layout.readme))
+    state.devops_files = [p.as_posix() for p in devops_candidates if p.exists()]
+
     state.code_summary = (
         f"Backend: {len(state.backend_code_files)} files, "
         f"Frontend: {len(state.frontend_code_files)} files, "
@@ -586,6 +604,29 @@ def _discover_code_files(state: PipelineState) -> None:
             print(f"    • {f}")
 
 
+def _validate_artifact_content(
+    artifact_path: Path, min_chars: int = 100, phase_label: str = ""
+) -> bool:
+    """Validate that an artifact file exists and has meaningful content.
+
+    Returns True if valid, False otherwise. Prints warnings on failure.
+    """
+    label = f"{phase_label}: " if phase_label else ""
+    if not artifact_path.exists():
+        print(f"  ⚠ {label}Artifact missing: {artifact_path}")
+        return False
+    try:
+        content = artifact_path.read_text(encoding="utf-8").strip()
+    except Exception as e:
+        print(f"  ⚠ {label}Cannot read {artifact_path}: {e}")
+        return False
+    if len(content) < min_chars:
+        print(f"  ⚠ {label}Artifact too short ({len(content)} chars < {min_chars}): {artifact_path}")
+        return False
+    print(f"  ✅ {label}Artifact valid: {artifact_path} ({len(content)} chars)")
+    return True
+
+
 def _phase_coding_backend(
     state: PipelineState,
     thresholds: PipelineThresholds,
@@ -601,12 +642,16 @@ def _phase_coding_backend(
         state.errors.append("No approved spec for coding")
         return state
 
+    tech_stack = parse_tech_stack(approved_spec)
+    directory_layout = parse_directory_layout(approved_spec)
     backend_plan = _get_backend_plan(state)
     crew = build_coding_backend_crew(
         approved_spec=approved_spec,
         backend_plan=backend_plan,
         user_request=state.request,
         feedback=fixes_text,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
     )
     crew.kickoff()
     _discover_code_files(state)
@@ -628,12 +673,16 @@ def _phase_coding_frontend(
         state.errors.append("No approved spec for coding")
         return state
 
+    tech_stack = parse_tech_stack(approved_spec)
+    directory_layout = parse_directory_layout(approved_spec)
     frontend_plan = _get_frontend_plan(state)
     crew = build_coding_frontend_crew(
         approved_spec=approved_spec,
         frontend_plan=frontend_plan,
         user_request=state.request,
         feedback=fixes_text,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
     )
     crew.kickoff()
     _discover_code_files(state)
@@ -655,10 +704,14 @@ def _phase_coding_tests(
         state.errors.append("No approved spec for coding")
         return state
 
+    tech_stack = parse_tech_stack(approved_spec)
+    directory_layout = parse_directory_layout(approved_spec)
     crew = build_coding_tests_crew(
         approved_spec=approved_spec,
         user_request=state.request,
         feedback=fixes_text,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
     )
     crew.kickoff()
     _discover_code_files(state)
@@ -680,10 +733,14 @@ def _phase_coding_devops(
         state.errors.append("No approved spec for coding")
         return state
 
+    tech_stack = parse_tech_stack(approved_spec)
+    directory_layout = parse_directory_layout(approved_spec)
     crew = build_coding_devops_crew(
         approved_spec=approved_spec,
         user_request=state.request,
         feedback=fixes_text,
+        tech_stack=tech_stack,
+        directory_layout=directory_layout,
     )
     crew.kickoff()
     _discover_code_files(state)

@@ -152,6 +152,236 @@ class QualitySummary(BaseModel):
     passed: bool = Field(default=False)
 
 
+# ── Модели технологического стека и структуры проекта ────────────────────────
+
+
+class TechStack(BaseModel):
+    """Технологический стек, определяемый агентом на фазе планирования.
+
+    Все поля — строки с разумными значениями по умолчанию.
+    Агент спецификации обязан переопределить их на основе запроса пользователя.
+    Если проект не требует какой-либо части (например, нет фронтенда),
+    соответствующее поле остаётся пустой строкой.
+    """
+
+    # Backend
+    backend_language: str = Field(
+        default="python",
+        description="Язык бэкенда (python, go, rust, typescript, java, ...)",
+    )
+    backend_framework: str = Field(
+        default="fastapi",
+        description="Фреймворк бэкенда (fastapi, django, gin, actix, express, ...)",
+    )
+    backend_package_manager: str = Field(
+        default="pip",
+        description="Менеджер пакетов бэкенда (pip, poetry, go modules, cargo, npm, ...)",
+    )
+    backend_build_tool: str = Field(
+        default="",
+        description="Инструмент сборки бэкенда, если применим (poetry, setuptools, ...)",
+    )
+    backend_test_framework: str = Field(
+        default="pytest",
+        description="Фреймворк тестирования бэкенда (pytest, unittest, go test, ...)",
+    )
+
+    # Frontend
+    frontend_language: str = Field(
+        default="typescript",
+        description="Язык фронтенда (typescript, javascript, ...)",
+    )
+    frontend_framework: str = Field(
+        default="react",
+        description="Фреймворк/библиотека фронтенда (react, vue, svelte, angular, next, ...)",
+    )
+    frontend_build_tool: str = Field(
+        default="vite",
+        description="Инструмент сборки фронтенда (vite, webpack, turbopack, ...)",
+    )
+    frontend_css: str = Field(
+        default="tailwind",
+        description="CSS-подход (tailwind, css-modules, styled-components, vanilla, ...)",
+    )
+    frontend_router: str = Field(
+        default="react-router",
+        description="Роутер фронтенда, если SPA (react-router, vue-router, svelte-kit, ...)",
+    )
+    frontend_test_framework: str = Field(
+        default="vitest",
+        description="Фреймворк тестирования фронтенда (vitest, jest, playwright, cypress, ...)",
+    )
+    frontend_component_test_lib: str = Field(
+        default="react-testing-library",
+        description="Библиотека тестирования компонентов (react-testing-library, vue-test-utils, ...)",
+    )
+
+    # Database
+    database: str = Field(
+        default="postgresql",
+        description="Основная база данных (postgresql, sqlite, mysql, mongodb, ...)",
+    )
+    orm: str = Field(
+        default="sqlalchemy",
+        description="ORM / data-access библиотека (sqlalchemy, prisma, typeorm, gorm, ...)",
+    )
+    migration_tool: str = Field(
+        default="alembic",
+        description="Инструмент миграций (alembic, prisma migrate, golang-migrate, ...)",
+    )
+
+    # DevOps
+    container_runtime: str = Field(
+        default="docker",
+        description="Среда контейнеризации (docker, podman, ...)",
+    )
+    backend_server: str = Field(
+        default="uvicorn",
+        description="Сервер для бэкенда (uvicorn, gunicorn, node, ...)",
+    )
+    frontend_server: str = Field(
+        default="nginx",
+        description="Сервер для раздачи фронтенда (nginx, caddy, ...)",
+    )
+    ci_cd: str = Field(
+        default="github-actions",
+        description="CI/CD платформа (github-actions, gitlab-ci, ...)",
+    )
+
+    # E2E / integration
+    e2e_framework: str = Field(
+        default="playwright",
+        description="E2E фреймворк (playwright, cypress, selenium, ...)",
+    )
+
+    @property
+    def has_frontend(self) -> bool:
+        """Требуется ли фронтенд."""
+        return bool(self.frontend_framework.strip())
+
+    @property
+    def has_backend(self) -> bool:
+        """Требуется ли бэкенд."""
+        return bool(self.backend_language.strip())
+
+    def to_context_string(self) -> str:
+        """Форматирует стек в строку для подстановки в промпт агента."""
+        lines = ["## Technology Stack (from approved specification)"]
+        lines.append(f"- Backend: {self.backend_language} / {self.backend_framework}")
+        if self.database:
+            lines.append(f"- Database: {self.database} + {self.orm} ({self.migration_tool})")
+        lines.append(f"- Backend tests: {self.backend_test_framework}")
+        if self.has_frontend:
+            lines.append(f"- Frontend: {self.frontend_language} / {self.frontend_framework}")
+            lines.append(f"- Build tool: {self.frontend_build_tool}")
+            lines.append(f"- CSS: {self.frontend_css}")
+            if self.frontend_router:
+                lines.append(f"- Router: {self.frontend_router}")
+            lines.append(f"- Frontend tests: {self.frontend_test_framework} + {self.frontend_component_test_lib}")
+        else:
+            lines.append("- Frontend: NOT REQUIRED (no UI)")
+        lines.append(f"- Containerization: {self.container_runtime}")
+        lines.append(f"- Backend server: {self.backend_server}")
+        if self.has_frontend:
+            lines.append(f"- Frontend server: {self.frontend_server}")
+        if self.e2e_framework:
+            lines.append(f"- E2E: {self.e2e_framework}")
+        return "\n".join(lines)
+
+
+class DirectoryLayout(BaseModel):
+    """Структура директорий, определяемая агентом на основе типа проекта.
+
+    Позволяет поддерживать не только web-приложения,
+    но и CLI-утилиты, библиотеки, мобильные приложения и т.д.
+    """
+
+    project_type: str = Field(
+        default="web",
+        description="Тип проекта: web, cli, library, mobile, desktop",
+    )
+    source_root: str = Field(
+        default="apps",
+        description="Корневая директория исходного кода",
+    )
+    backend_dir: str = Field(
+        default="apps/backend",
+        description="Путь к бэкенд-коду (может быть пустым)",
+    )
+    frontend_dir: str = Field(
+        default="apps/frontend",
+        description="Путь к фронтенд-коду (может быть пустым)",
+    )
+    test_dir: str = Field(
+        default="apps/tests",
+        description="Путь к тестам",
+    )
+    dockerfile_backend: str = Field(
+        default="apps/Dockerfile.backend",
+        description="Путь к Dockerfile бэкенда",
+    )
+    dockerfile_frontend: str = Field(
+        default="apps/Dockerfile.frontend",
+        description="Путь к Dockerfile фронтенда",
+    )
+    docker_compose: str = Field(
+        default="apps/docker-compose.yml",
+        description="Путь к docker-compose.yml",
+    )
+    env_example: str = Field(
+        default="apps/.env.example",
+        description="Путь к .env.example",
+    )
+    readme: str = Field(
+        default="README.md",
+        description="Путь к README.md",
+    )
+
+    @classmethod
+    def for_cli(cls) -> "DirectoryLayout":
+        """Предустановка для CLI-проектов."""
+        return cls(
+            project_type="cli",
+            source_root="src",
+            backend_dir="src",
+            frontend_dir="",
+            test_dir="tests",
+            dockerfile_backend="Dockerfile",
+            dockerfile_frontend="",
+            docker_compose="",
+            env_example=".env.example",
+            readme="README.md",
+        )
+
+    @classmethod
+    def for_library(cls) -> "DirectoryLayout":
+        """Предустановка для библиотек."""
+        return cls(
+            project_type="library",
+            source_root="src",
+            backend_dir="src",
+            frontend_dir="",
+            test_dir="tests",
+            dockerfile_backend="",
+            dockerfile_frontend="",
+            docker_compose="",
+            env_example="",
+            readme="README.md",
+        )
+
+    @property
+    def has_frontend(self) -> bool:
+        return bool(self.frontend_dir.strip())
+
+    @property
+    def has_backend(self) -> bool:
+        return bool(self.backend_dir.strip())
+
+    @property
+    def has_docker(self) -> bool:
+        return bool(self.dockerfile_backend.strip())
+
+
 # ── Основное состояние пайплайна ─────────────────────────────────────────────
 
 
@@ -210,6 +440,10 @@ class PipelineState(BaseModel):
     # ── Phase 6: Delivery ──
     quality: QualitySummary = Field(default_factory=QualitySummary)
     delivery_summary: str = Field(default="")
+
+    # ── Технологический стек и структура (определяются на фазе Planning) ──
+    tech_stack: TechStack = Field(default_factory=TechStack)
+    directory_layout: DirectoryLayout = Field(default_factory=DirectoryLayout)
 
     # ── Phase 7: Coding ──
     backend_code_files: list[str] = Field(default_factory=list)
