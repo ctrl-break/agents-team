@@ -220,9 +220,67 @@ python -m agents.flow --from-file requests/chat-app/request.md
 python -m agents.flow --from-file requests/chat-app/request.md --auto-approve
 ```
 
-### Interactive Mode
+### Interactive Mode (Menu-Driven TUI)
 
-If no request argument is provided and `--from-file` is not used, the CLI prompts for multi-line input:
+The new interactive CLI (`agent-team-interactive`) provides a full menu-driven terminal interface for project management — no command-line arguments needed.
+
+**Launch:**
+
+```bash
+# Via installed entry point
+uv run agent-team-interactive
+
+# Auto-approve all phases (skip human approval)
+uv run agent-team-interactive --auto-approve
+
+# Or directly via Python
+python -m agents.interactive
+python -m agents.interactive --auto-approve
+```
+
+**Main Menu:**
+
+```
+🚀 SpecPipeline — Interactive Mode
+  [1] ✨ Create a new project
+  [2] 📂 Work with existing projects
+  [3] 🚪 Exit
+```
+
+**Creating a new project** — two input methods:
+1. Type the description interactively (multi-line, finish with empty line)
+2. Read from a markdown file (e.g., `requests/my-project/request.md`)
+
+**Working with existing projects** — automatically discovers all projects with saved state in `requests/*/` and shows a browsable list with request previews.
+
+**Project Menu** (context-sensitive, adapts to the current pipeline phase):
+
+| Action | When Available | Description |
+|---|---|---|
+| 📊 Status overview | Always | ✅/🔄/⬜ phase checklist with scores and file counts |
+| 📋 Review & Approve Plan | After planning | Approve, edit-in-editor, or reject with feedback |
+| 🔄 Re-plan specification | Before approval | Regenerate specification from scratch |
+| ▶ Continue pipeline | After approval | Resume from the current phase |
+| 💻 Generate All Code | After approval | Run all coding phases (backend→frontend→tests→devops) |
+| 💻 Re-generate Backend | After approval | Re-generate backend code independently |
+| 💻 Re-generate Frontend | After approval | Re-generate frontend code independently |
+| 🧪 Re-generate Tests | After approval | Re-generate test files independently |
+| 🐳 Re-generate DevOps | After approval | Re-generate Dockerfiles, compose, env files |
+| 🔧 Apply Fixes | Always | Load improvement instructions from a markdown file |
+| 📄 View Full Plan | After planning | Display the complete specification text |
+| 📋 Show Artifacts | Always | List all generated docs and code files |
+
+**Key benefits over the CLI mode:**
+- No need to remember command-line flags
+- Browse and manage multiple projects in one session
+- Re-run individual coding phases without restarting the whole pipeline
+- Edit-and-approve workflow with external editor support
+- Visual status indicators for each pipeline phase
+- Full keyboard navigation with back (0) option on every menu
+
+**Legacy interactive input** (from `python -m agents.flow`):
+
+If no request argument is provided and `--from-file` is not used, the flow CLI also prompts for multi-line input:
 
 ```bash
 python -m agents.flow
