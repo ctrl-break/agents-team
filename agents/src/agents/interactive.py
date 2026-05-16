@@ -32,10 +32,39 @@ from agents.state import Phase, PipelineState
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-REQUESTS_DIR = Path("requests")
-DOCS_DIR = Path("docs")
-APPS_DIR = Path("apps")
 STATE_FILE = "state.json"
+
+
+def _find_repo_root() -> Path:
+    """Find the repository root by looking for .git first, then pyproject.toml.
+
+    Priority: .git (always the true repo root), then pyproject.toml,
+    then the presence of agents/src/agents as a structural marker.
+    """
+    current = Path.cwd()
+
+    # 1) Look for .git — this is always the repo root, never a subdirectory
+    for ancestor in [current, *current.parents]:
+        if (ancestor / ".git").exists():
+            return ancestor
+
+    # 2) Fallback: pyproject.toml (but NOT if it's in a subdirectory like agents/)
+    for ancestor in [current, *current.parents]:
+        if (ancestor / "pyproject.toml").exists():
+            return ancestor
+
+    # 3) Second fallback: structural marker agents/src/agents
+    for ancestor in [current, *current.parents]:
+        if (ancestor / "agents" / "src" / "agents").exists():
+            return ancestor
+
+    return current
+
+
+ROOT_DIR = _find_repo_root()
+REQUESTS_DIR = ROOT_DIR / "requests"
+DOCS_DIR = ROOT_DIR / "docs"
+APPS_DIR = ROOT_DIR / "apps"
 
 STAGES_ORDER: list[Phase] = [
     Phase.ANALYSIS,
@@ -153,6 +182,11 @@ def wait_enter() -> None:
 
 def _get_state_file(project_dir: Path) -> Path:
     """Get path to state.json for a project directory."""
+    # For root project, state.json lives in docs/state.json
+    if project_dir.resolve() == ROOT_DIR.resolve():
+        docs_state = DOCS_DIR.resolve() / STATE_FILE
+        if docs_state.exists():
+            return docs_state
     return project_dir / STATE_FILE
 
 
@@ -176,7 +210,7 @@ def _get_completed_phase(state: PipelineState) -> Phase:
 def _list_project_dirs() -> list[Path]:
     """
     Discover all existing project directories.
-    Searches in requests/ and the root docs/ directory.
+    Searches in requests/ and the docs/ directory for state.json files.
     """
     projects: list[Path] = []
 
@@ -186,9 +220,14 @@ def _list_project_dirs() -> list[Path]:
             if item.is_dir() and _has_state(item):
                 projects.append(item)
 
-    # Look for root-level state (legacy projects in docs/)
+    # Look for state in docs/ directory (main pipeline writes to docs/state.json)
+    docs_state = DOCS_DIR / STATE_FILE
+    if docs_state.exists():
+        projects.append(ROOT_DIR.resolve())
+
+    # Also check root level state.json (legacy projects)
     root_state = Path(STATE_FILE)
-    if root_state.exists():
+    if root_state.exists() and Path(".").resolve() not in projects:
         projects.append(Path(".").resolve())
 
     return projects
@@ -840,7 +879,10 @@ def _menu_project(project_dir: Path, auto_approve: bool) -> None:
 
     while True:
         clear_screen()
-        print_header(f"📁 Project: {project_dir.name if project_dir.name else 'root'}")
+        # Display project name from state if available, otherwise use directory name
+        state = _load_state(state_file)
+        project_display_name = state.project_name or (project_dir.name if project_dir.name else "root")
+        print_header(f"📁 Project: {project_display_name}")
 
         # Show status
         print(_get_status_summary(state))
@@ -924,16 +966,21 @@ def _menu_existing_projects(auto_approve: bool) -> None:
 
         options = []
         for p in projects:
-            if p == Path(".").resolve():
-                name = "root (legacy project)"
-            else:
-                name = p.name
-
-            # Try to get a short description from the state
+            # Try to get project info from the state
             try:
-                state = _load_state(p / STATE_FILE)
+                state = _load_state(_get_state_file(p))
+                if state.project_name:
+                    name = state.project_name
+                elif p == Path(".").resolve():
+                    name = "root (legacy project)"
+                else:
+                    name = p.name
                 request_preview = state.request[:80] if state.request else "no request"
             except Exception:
+                if p == Path(".").resolve():
+                    name = "root (legacy project)"
+                else:
+                    name = p.name
                 request_preview = "unknown"
 
             options.append((p, f"{name} — {request_preview}"))

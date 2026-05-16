@@ -92,6 +92,22 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _generate_project_name(request: str, max_words: int = 5) -> str:
+    """Generate a short human-readable project name from the request text."""
+    if not request.strip():
+        return "Untitled Project"
+    # Take first line, strip punctuation, limit to N words
+    first_line = request.split("\n")[0].strip()
+    # Remove common punctuation
+    cleaned = first_line.replace(".", "").replace(",", "").replace(":", "").replace(";", "")
+    words = cleaned.split()
+    name = " ".join(words[:max_words])
+    # Truncate to reasonable length
+    if len(name) > 60:
+        name = name[:57] + "..."
+    return name if name else "Untitled Project"
+
+
 def _print_phase_header(phase: str, iteration: int = 0) -> None:
     header = f" PHASE: {phase} "
     if iteration > 0:
@@ -199,7 +215,12 @@ def _phase_analysis(state: PipelineState) -> PipelineState:
     )
     state.clarifications = []
 
+    # Generate a human-readable project name from the request
+    if not state.project_name:
+        state.project_name = _generate_project_name(state.request)
+
     print(f"  Request accepted ({len(state.request)} chars).")
+    print(f"  Project: {state.project_name}")
     return state
 
 

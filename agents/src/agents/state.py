@@ -165,6 +165,9 @@ class PipelineState(BaseModel):
 
     # ── Входные данные ──
     request: str = Field(default="", description="Исходный запрос пользователя")
+    project_name: str = Field(
+        default="", description="Человекочитаемое имя проекта (генерируется из запроса)"
+    )
     auto_approve: bool = Field(
         default=False, description="Автоодобрение всех гейтов"
     )

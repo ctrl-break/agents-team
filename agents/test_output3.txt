@@ -1,0 +1,12 @@
+=== Running from CWD: C:\Users\fox\Documents\projects\orchestrator\agents ===
+ROOT_DIR:      C:\Users\fox\Documents\projects\orchestrator
+DOCS_DIR:      C:\Users\fox\Documents\projects\orchestrator\docs (exists: True)
+REQUESTS_DIR:  C:\Users\fox\Documents\projects\orchestrator\requests (exists: False)
+APPS_DIR:      C:\Users\fox\Documents\projects\orchestrator\apps (exists: True)
+
+docs/state.json: C:\Users\fox\Documents\projects\orchestrator\docs\state.json (exists: True)
+
+Projects found: 1
+  - C:\Users\fox\Documents\projects\orchestrator\agents
+    state_file: C:\Users\fox\Documents\projects\orchestrator\docs\state.json (exists: True)
+    name: Kids Chore Tracker, phase: Phase.VALIDATION
